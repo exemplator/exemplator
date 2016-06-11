@@ -1,7 +1,5 @@
 package xyz.exemplator.exemplator.data;
 
-import com.sun.org.apache.bcel.internal.classfile.Code;
-import javassist.bytecode.analysis.Executor;
 import org.apache.http.HttpException;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -16,7 +14,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class CodeSearch implements ICodeSearch {
@@ -55,13 +52,12 @@ public class CodeSearch implements ICodeSearch {
         }).collect(Collectors.toList());
     }
 
-    @Override
-    public Optional<CodeSample> fetchRawCode(CodeSample codeSample) {
+    private Optional<CodeSample> fetchRawCode(CodeSample codeSample) {
         if (codeSample.getRawUrl() != null) {
             HTTPRequest httpRequest = new HTTPRequest();
             String rawResponse = httpRequest.getRequest(codeSample.getUrl());
             if (rawResponse != null) {
-                codeSample.setCodeSnippet(rawResponse);
+                codeSample.setCode(rawResponse);
                 InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
                 codeSample.setCodeInputStream(stream);
                 return Optional.of(codeSample);
@@ -71,8 +67,7 @@ public class CodeSearch implements ICodeSearch {
         return Optional.empty();
     }
 
-    @Override
-    public Optional<CodeSample> fetchGithubRating(CodeSample codeSample) {
+    private Optional<CodeSample> fetchGithubRating(CodeSample codeSample) {
         HTTPRequest httpRequest = new HTTPRequest();
         String response = httpRequest.getRequest(GITHUB_REPO_URL + codeSample.getRepository() + "+user:" + codeSample.getUserName());
         JSONParser parser = new JSONParser();

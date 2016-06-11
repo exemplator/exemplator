@@ -1,6 +1,5 @@
 package xyz.exemplator.exemplator;
 
-import io.netty.util.concurrent.PromiseCombiner;
 import ratpack.exec.Blocking;
 import ratpack.exec.Promise;
 import ratpack.jackson.Jackson;
@@ -17,8 +16,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.sun.javafx.tools.resource.DeployResource.Type.data;
 import static java.util.stream.Collectors.toList;
 import static ratpack.jackson.Jackson.fromJson;
 
@@ -65,19 +62,8 @@ public class Router {
                                                 .filter(Optional::isPresent)
                                                 .map(Optional::get)
                                                 .collect(toList());
-                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage()));
+                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage(), executorService));
                                     })
-                                    .map(codeSamples -> codeSamples.stream()
-                                            .map(sample -> CompletableFuture.supplyAsync(() -> codeSearch.rawFetch(sample), executorService)
-                                                    .thenApply(result -> {
-                                                        Response.Position position = new Response.Position(1, 1);
-                                                        List<Response.Position> positions = new ArrayList<>();
-                                                        positions.add(position);
-                                                        return new Response.Occurrence(result.getRawUrl(), result.getUserUrl(), result.getCodeSnippet(), positions);
-                                                    })
-                                            )
-                                            .collect(Collectors.toList())
-                                    )
                                     .map(futures ->
                                             CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
                                                     .thenApply(v -> futures.stream()
@@ -85,8 +71,20 @@ public class Router {
                                                             .collect(toList())
                                                     )
                                     )
-                                    .flatMap((ratpack.func.Function<CompletableFuture<List<Response.Occurrence>>, Promise<List<Response.Occurrence>>>)future ->
+                                    .map(future -> future.thenApply(list -> list.stream()
+                                                .filter(Optional::isPresent)
+                                            .map(Optional::get)
+                                            .collect(Collectors.toList()))
+                                    )
+                                    .flatMap((ratpack.func.Function<CompletableFuture<List<CodeSample>>, Promise<List<CodeSample>>>)future ->
                                             Promise.async(downstream -> downstream.accept(future)))
+                                    .map(list -> {
+                                        List<Response.Position> positions = new ArrayList<>();
+                                        positions.add(new Response.Position(1, 1));
+                                        return list.stream()
+                                                .map(sample -> new Response.Occurrence(sample.getRawUrl(), sample.getUserUrl(), sample.getCode(), positions))
+                                                .collect(Collectors.toList());
+                                    })
                                     .map(Response::new)
                                     .map(Jackson::json));
                         })

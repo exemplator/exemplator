@@ -57,7 +57,7 @@ class JavaCodeRater {
         //CodeSample codeSampleObj = getGitRepoStars(user, repo);
         CodeSample codeSampleObj = new CodeSample(user, repo);
 
-        codeSampleObj.setUrl(gitRepo);
+        codeSampleObj.setUserUrl(gitRepo);
         codeSampleObj.setRawUrl(rawURL);
         return codeSampleObj;
     }
