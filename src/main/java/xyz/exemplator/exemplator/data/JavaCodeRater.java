@@ -54,7 +54,9 @@ class JavaCodeRater {
 
         String rawURL = GITHUB_RAW_URL + user + "/" + repo + "/master" + location + "/" + filename;
 
-        CodeSample codeSampleObj = getGitRepoStars(user, repo);
+        //CodeSample codeSampleObj = getGitRepoStars(user, repo);
+        CodeSample codeSampleObj = new CodeSample(user, repo);
+
         codeSampleObj.setUrl(gitRepo);
         codeSampleObj.setRawUrl(rawURL);
         return codeSampleObj;

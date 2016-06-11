@@ -2,12 +2,14 @@ package xyz.exemplator.exemplator.data;
 
 import org.json.simple.JSONObject;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 public class CodeSample implements Comparable<CodeSample> {
     private String rawUrl;
     private String userUrl;
-    private int stars;
+    private int stars = 0;
     private InputStream codeInputStream;
     private String codeSnippet;
 
@@ -85,6 +87,21 @@ public class CodeSample implements Comparable<CodeSample> {
 
     public void setUserUrl(String userUrl) {
         this.userUrl = userUrl;
+    }
+
+    public CodeSample fetchRawCode() {
+        if (rawUrl != null) {
+            HTTPRequest httpRequest = new HTTPRequest();
+            String rawResponse = httpRequest.getRequest(rawUrl);
+            if (rawResponse != null) {
+                setCodeSnippet(rawResponse);
+                InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
+                setCodeInputStream(stream);
+                return this;
+            }
+        }
+
+        return null;
     }
 
     @Override
