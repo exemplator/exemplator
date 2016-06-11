@@ -7,6 +7,8 @@ task wrapper(type: Wrapper) {
 }
 
 apply plugin: 'java'
+apply plugin: 'application'
+apply plugin: "io.ratpack.ratpack-java"
 
 buildscript {
     repositories {
@@ -21,6 +23,12 @@ buildscript {
 }
 
 mainClassName = 'xyz.exemplator.exemplator.Main'
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'xyz.exemplator.exemplator.Main'
+    }
+}
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
@@ -40,10 +48,10 @@ dependencies {
 
 //create a single Jar with all dependencies
 task fatJar(type: Jar) {
-    manifest {
-        Attributes 'Main-Class': 'org.intellimate.server.Main'
-    }
+//    manifest {
+//        Attributes 'Main-Class': 'xyz.exemplator.exemplator.Main'
+//    }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
-    with Jar
+//    with Jar
 }
