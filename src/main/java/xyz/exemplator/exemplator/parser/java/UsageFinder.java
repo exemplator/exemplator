@@ -1,18 +1,21 @@
 package xyz.exemplator.exemplator.parser.java;
 
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.*;
-import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.expr.ObjectCreationExpr;
-import com.github.javaparser.ast.expr.QualifiedNameExpr;
+import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.stmt.BlockStmt;
+import com.github.javaparser.ast.stmt.ExpressionStmt;
+import com.github.javaparser.ast.stmt.Statement;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.ast.type.Type;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static javafx.scene.input.KeyCode.M;
@@ -40,7 +43,7 @@ public class UsageFinder {
 
     private List<Integer> checkTypeForUsages() {
         boolean identifierOnlyEnabled = command.getIdentifierOnlyValid().test(type, identifierOnly);
-        List<LeftQualifier> fieldQualifiers;
+        Set<LeftQualifier> fieldQualifiers;
         if (command.getClassName().isPresent()) {
             fieldQualifiers = type.getChildrenNodes().stream()
                     .filter(node -> node instanceof FieldDeclaration)
@@ -52,9 +55,9 @@ public class UsageFinder {
                                     command.getPackageName().orElse(null)
                             ).stream()
                     )
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
         } else {
-            fieldQualifiers = new ArrayList<>();
+            fieldQualifiers = new HashSet<>();
         }
         return type.getChildrenNodes().stream()
                 .filter(node -> node instanceof MethodDeclaration)
@@ -63,11 +66,43 @@ public class UsageFinder {
                 .collect(Collectors.toList());
     }
 
-    private List<Integer> getUsages(MethodDeclaration method, List<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
+    private List<Integer> getUsages(MethodDeclaration method, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
+        method.getChildrenNodes().stream()
+                .filter(node -> node instanceof BlockStmt)
+                .map(node -> (BlockStmt) node)
+                .flatMap(node -> getUsagesForMethod(node, fieldQualifiers, identifierOnlyEnabled).stream())
         return new ArrayList<>();
     }
 
-    private List<LeftQualifier> getValidFieldDeclarations(FieldDeclaration fieldDeclaration, String className, String packageName) {
+    private List<Integer> getUsagesForMethod(BlockStmt stmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
+        Set<LeftQualifier> methodFieldQual = new HashSet<>();
+        Set<String> localVars = new HashSet<>();
+        for (Statement statement : stmt.getStmts()) {
+            if (statement instanceof ExpressionStmt) {
+                Expression expression = ((ExpressionStmt) statement).getExpression();
+                if (expression instanceof VariableDeclarationExpr) {
+                    if (!command.getClassName().isPresent()) {
+                        continue;
+                    }
+                    String classname = command.getClassName().get();
+                    VariableDeclarationExpr declr = (VariableDeclarationExpr) expression;
+                    Type type = declr.getType();
+                    boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+                    if (!valid) {
+                        continue;
+                    }
+                    declr.getVars().stream()
+                            .map(var -> var.getId().toString())
+                            .filter(identifier -> fieldQualifiers.contains(new LeftQualifier(false, identifier)))
+                            .forEach(localVars::add);
+
+                }
+            }
+        }
+        return null;
+    }
+
+    private Set<LeftQualifier> getValidFieldDeclarations(FieldDeclaration fieldDeclaration, String className, String packageName) {
         Type type = fieldDeclaration.getType();
         if (type instanceof ReferenceType) {
             Type fieldType = ((ReferenceType) type).getType();
@@ -77,7 +112,7 @@ public class UsageFinder {
                         .map(VariableDeclarator::getId)
                         .map(VariableDeclaratorId::getName)
                         .map(name -> new LeftQualifier(true, name))
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toSet());
             }
         }
 
@@ -92,7 +127,7 @@ public class UsageFinder {
                     .map(VariableDeclarator::getId)
                     .map(VariableDeclaratorId::getName)
                     .map(name -> new LeftQualifier(false, name))
-                    .collect(Collectors.toList());
+                    .collect(Collectors.toSet());
     }
 
     private boolean checkType(Type type, String className, String packageName, boolean imported) {

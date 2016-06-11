@@ -13,9 +13,11 @@ public class ExampleJava {
     private final int x = 3;
     private List<String> test2;
     private java.util.Set<String> test3;
+
     public void test() {
         List<String> list = new ArrayList<>();
         list.add("haha");
+        test2 = new LinkedList<>();
         test2();
         System.out.println(list);
     }
