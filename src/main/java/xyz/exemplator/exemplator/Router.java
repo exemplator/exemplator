@@ -25,8 +25,9 @@ public class Router {
                             ctx.getResponse().getHeaders().add("access-control-allow-headers", "Authorization,Content-Type");
                             ctx.getResponse().getHeaders().add("access-control-expose-headers", "Link,Location");
                             ctx.getResponse().getHeaders().add("access-control-max-age", "86400");
+                            ctx.next();
                         })
-                        .get("index", ctx -> ctx.render("Hello"))
+                        .get(ctx -> ctx.render("Hello World"))
                 )
         );
     }
