@@ -46,6 +46,22 @@ public class CodeSearch implements ICodeSearch {
         return codeSamples;
     }
 
+    @Override
+    public CodeSample rawFetch(CodeSample codeSample) {
+        if (codeSample.getRawUrl() != null) {
+            HTTPRequest httpRequest = new HTTPRequest();
+            String rawResponse = httpRequest.getRequest(codeSample.getUrl());
+            if (rawResponse != null) {
+                codeSample.setCodeSnippet(rawResponse);
+                InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
+                codeSample.setCodeInputStream(stream);
+                return codeSample;
+            }
+        }
+
+        return null;
+    }
+
     private Map<JSONObject, CodeSample> parseJson(String jsonString) {
         JSONParser parser = new JSONParser();
         try {

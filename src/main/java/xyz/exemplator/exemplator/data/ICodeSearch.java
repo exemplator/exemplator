@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface ICodeSearch {
     List<CodeSample> fetch(List<String> searchTerms, int page) throws HttpException;
+
+    CodeSample rawFetch(CodeSample codeSample);
 }

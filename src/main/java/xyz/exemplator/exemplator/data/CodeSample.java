@@ -89,21 +89,6 @@ public class CodeSample implements Comparable<CodeSample> {
         this.userUrl = userUrl;
     }
 
-    public CodeSample fetchRawCode() {
-        if (rawUrl != null) {
-            HTTPRequest httpRequest = new HTTPRequest();
-            String rawResponse = httpRequest.getRequest(rawUrl);
-            if (rawResponse != null) {
-                setCodeSnippet(rawResponse);
-                InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
-                setCodeInputStream(stream);
-                return this;
-            }
-        }
-
-        return null;
-    }
-
     @Override
     public int compareTo(CodeSample o) {
         return o.getStars() - stars;
