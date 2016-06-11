@@ -1,7 +1,21 @@
 package xyz.exemplator.exemplator;
 
+import ratpack.exec.Blocking;
+import ratpack.jackson.Jackson;
 import ratpack.server.RatpackServer;
 import ratpack.server.ServerConfig;
+import xyz.exemplator.exemplator.data.ICodeSearch;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static com.sun.javafx.tools.resource.DeployResource.Type.data;
+import static ratpack.jackson.Jackson.fromJson;
+import static ratpack.jackson.Jackson.json;
+import static ratpack.jackson.Jackson.jsonNode;
 
 /**
  * @author LeanderK
@@ -9,9 +23,11 @@ import ratpack.server.ServerConfig;
  */
 public class Router {
     private final int port;
+    private final ICodeSearch codeSearch;
 
-    public Router(int port) {
+    public Router(int port, ICodeSearch codeSearch) {
         this.port = port;
+        this.codeSearch = codeSearch;
     }
 
     public void init() throws Exception {
@@ -27,7 +43,36 @@ public class Router {
                             ctx.getResponse().getHeaders().add("access-control-max-age", "86400");
                             ctx.next();
                         })
-                        .get(ctx -> ctx.render("Hello World"))
+                        .post("search", ctx -> {
+                            if (!ctx.getRequest().getContentType().isJson()) {
+                                ctx.getResponse().status(500);
+                                ctx.render("Expected Content-Type: application/json");
+                                return;
+                            }
+                            ctx.render(ctx.parse(fromJson(Request.class))
+                                    .flatMap(request -> {
+                                        if (!request.getToken().isPresent()
+                                                && !request.getClassName().isPresent() && !request.getMethodName().isPresent()) {
+                                            throw new IllegalArgumentException("token, methodName or classname must be present");
+                                        }
+                                        List<String> searchTerms = Stream.of(request.getClassName(), request.getMethodName(), request.getPackageName(), request.getToken())
+                                                .filter(Optional::isPresent)
+                                                .map(Optional::get)
+                                                .collect(Collectors.toList());
+                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage()));
+                                    })
+                                    .map(list -> list.stream()
+                                                .map(sample -> {
+                                                    Response.Position position = new Response.Position(1, 1);
+                                                    List<Response.Position> positions = new ArrayList<>();
+                                                    positions.add(position);
+                                                    return new Response.Occurrence(sample.getUrl(), "", "", positions);
+                                                })
+                                                .collect(Collectors.toList())
+                                    )
+                                    .map(Response::new)
+                                    .map(Jackson::json));
+                        })
                 )
         );
     }
