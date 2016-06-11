@@ -2,6 +2,8 @@ package xyz.exemplator.exemplator;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.exemplator.exemplator.data.CodeSearch;
+import xyz.exemplator.exemplator.data.ICodeSearch;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -48,7 +50,8 @@ public class Main {
             logger.error("PORT must be a number, {}", e);
             System.exit(-1);
         }
-        Router router = new Router(port);
+        ICodeSearch codeSearch = new CodeSearch();
+        Router router = new Router(port, codeSearch);
         try {
             router.init();
         } catch (Exception e) {
