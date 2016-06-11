@@ -8,12 +8,42 @@ task wrapper(type: Wrapper) {
 
 apply plugin: 'java'
 
-sourceCompatibility = 1.5
+buildscript {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        jcenter()
+    }
+
+    dependencies {
+        classpath "io.ratpack:ratpack-gradle:1.3.3"
+    }
+}
+
+mainClassName = 'xyz.exemplator.exemplator.Main'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+    compile 'ch.qos.logback:logback-core:1.+'
+    compile 'ch.qos.logback:logback-classic:1.+'
+    compile 'org.slf4j:slf4j-api:1.7.12'
+    testCompile 'org.mockito:mockito-core:1.+'
     testCompile group: 'junit', name: 'junit', version: '4.11'
+    testCompile ratpack.dependency('test')
+}
+
+//create a single Jar with all dependencies
+task fatJar(type: Jar) {
+    manifest {
+        Attributes 'Main-Class': 'org.intellimate.server.Main'
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with Jar
 }
