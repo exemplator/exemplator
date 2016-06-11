@@ -27,7 +27,7 @@ class HTTPRequest {
 
             return response.toString();
         } catch (IOException e) {
-            logger.error("Unable to perform get request with: " + url, e);
+            // error
         }
 
         return null;

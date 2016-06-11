@@ -22,6 +22,7 @@ class JavaCodeRater {
 
     private static String LANG_JAVA = "java";
     private static String GITHUB_REPO_URL = "https://api.github.com/search/repositories?q=";
+    private static String GITHUB_RAW_URL = "https://raw.githubusercontent.com/";
 
     CodeSample rateJavaCodeSample(JSONObject codeSample) {
         String language = (String) codeSample.get("language");
@@ -51,7 +52,14 @@ class JavaCodeRater {
         String user = gitData[3];
         String repo = gitData[4];
 
-        return getGitRepoStars(user, repo);
+        String rawURL = GITHUB_RAW_URL + user + "/" + repo + "/master" + location + "/" + filename;
+
+        //CodeSample codeSampleObj = getGitRepoStars(user, repo);
+        CodeSample codeSampleObj = new CodeSample(user, repo);
+
+        codeSampleObj.setUrl(gitRepo);
+        codeSampleObj.setRawUrl(rawURL);
+        return codeSampleObj;
     }
 
     private CodeSample getGitRepoStars(String user, String repo) {
@@ -74,7 +82,7 @@ class JavaCodeRater {
                     .filter(item -> {
                         JSONObject obj = (JSONObject) item;
                         String name = (String) obj.get("name");
-                        return name.toLowerCase().equals(repo);
+                        return name.toLowerCase().equals(repo.toLowerCase());
                     })
                     .findFirst()
                     .map(item -> {
