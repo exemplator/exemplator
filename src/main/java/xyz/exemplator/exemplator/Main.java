@@ -1,6 +1,10 @@
 package xyz.exemplator.exemplator;
 
-import xyz.exemplator.exemplator.data.SnippetFetcher;
+import org.apache.http.HttpException;
+import xyz.exemplator.exemplator.data.CodeSearch;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author LeanderK
@@ -8,7 +12,15 @@ import xyz.exemplator.exemplator.data.SnippetFetcher;
  */
 public class Main {
     public static void main(String[] args) {
-        SnippetFetcher snippetFetcher = new SnippetFetcher();
-        snippetFetcher.fetch("");
+        CodeSearch codeSearch = new CodeSearch();
+        try {
+            List<String> list = new ArrayList<>();
+            list.add("reverse");
+            list.add("test");
+
+            codeSearch.fetch(list, 1);
+        } catch (HttpException e) {
+            e.printStackTrace();
+        }
     }
 }
