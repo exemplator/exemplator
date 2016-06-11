@@ -1,5 +1,7 @@
 package xyz.exemplator.exemplator.parser.java;
 
+import static com.sun.tools.doclint.Entity.ge;
+
 /**
  * @author LeanderK
  * @version 1.0
@@ -11,6 +13,14 @@ public class LeftQualifier {
     public LeftQualifier(boolean isSameType, String name) {
         this.isSameType = isSameType;
         this.name = name;
+    }
+
+    public boolean isSameType() {
+        return isSameType;
+    }
+
+    public String getName() {
+        return name;
     }
 
     @Override

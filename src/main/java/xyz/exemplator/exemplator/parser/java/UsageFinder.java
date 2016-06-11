@@ -75,8 +75,7 @@ public class UsageFinder {
     }
 
     private List<Integer> getUsagesForMethod(BlockStmt stmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
-        Set<LeftQualifier> methodFieldQual = new HashSet<>();
-        Set<String> localVars = new HashSet<>();
+        Set<LeftQualifier> localVars = new HashSet<>();
         for (Statement statement : stmt.getStmts()) {
             if (statement instanceof ExpressionStmt) {
                 Expression expression = ((ExpressionStmt) statement).getExpression();
@@ -88,14 +87,13 @@ public class UsageFinder {
                     VariableDeclarationExpr declr = (VariableDeclarationExpr) expression;
                     Type type = declr.getType();
                     boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
-                    if (!valid) {
-                        continue;
-                    }
                     declr.getVars().stream()
                             .map(var -> var.getId().toString())
-                            .filter(identifier -> fieldQualifiers.contains(new LeftQualifier(false, identifier)))
-                            .forEach(localVars::add);
-
+                            .map(id -> new LeftQualifier(valid, id))
+                            .filter(qual -> fieldQualifiers.contains(qual) || localVars.contains(qual))
+                            .forEach(qual -> {
+                                if (qual.)
+                            });
                 }
             }
         }
