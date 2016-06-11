@@ -15,12 +15,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class CodeSearch {
+public class CodeSearch implements ICodeSearch {
     private static String SEARCHCODE_API_URL = "https://searchcode.com/api/codesearch_I/?q=";
     private static String RAW_CODE_URL = "https://searchcode.com/api/result/";
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
+    @Override
     public List<CodeSample> fetch(List<String> searchTerms, int page) throws HttpException {
         HTTPRequest httpRequest = new HTTPRequest();
         String url = createQuery(searchTerms, page, 2, 23);
