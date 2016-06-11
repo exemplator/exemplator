@@ -13,11 +13,11 @@ public class CodeSample implements Comparable<CodeSample> {
     private InputStream codeInputStream;
     private String codeSnippet;
 
-    public String getCodeSnippet() {
+    public String getCode() {
         return codeSnippet;
     }
 
-    public void setCodeSnippet(String codeSnippet) {
+    public void setCode(String codeSnippet) {
         this.codeSnippet = codeSnippet;
     }
 
@@ -43,10 +43,6 @@ public class CodeSample implements Comparable<CodeSample> {
 
     public int getStars() {
         return stars;
-    }
-
-    public void setUrl(String url) {
-        this.rawUrl = url;
     }
 
     public void setStars(int stars) {

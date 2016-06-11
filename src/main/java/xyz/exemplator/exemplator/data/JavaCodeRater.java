@@ -57,49 +57,8 @@ class JavaCodeRater {
         //CodeSample codeSampleObj = getGitRepoStars(user, repo);
         CodeSample codeSampleObj = new CodeSample(user, repo);
 
-        codeSampleObj.setUrl(gitRepo);
+        codeSampleObj.setUserUrl(gitRepo);
         codeSampleObj.setRawUrl(rawURL);
         return codeSampleObj;
-    }
-
-    private CodeSample getGitRepoStars(String user, String repo) {
-        CodeSample codeSample = new CodeSample(user, repo);
-        HTTPRequest httpRequest = new HTTPRequest();
-        String response = httpRequest.getRequest(GITHUB_REPO_URL + repo + "+user:" + user);
-        JSONParser parser = new JSONParser();
-
-        if (response == null) {
-            // Not supported by github
-            codeSample.setStars(-1);
-            return codeSample;
-        }
-
-        try {
-            Object jsonObj = parser.parse(response);
-            JSONObject jsonObject = (JSONObject) jsonObj;
-            JSONArray items = (JSONArray) jsonObject.get("items");
-            Optional<Integer> starCountOptional = items.stream()
-                    .filter(item -> {
-                        JSONObject obj = (JSONObject) item;
-                        String name = (String) obj.get("name");
-                        return name.toLowerCase().equals(repo.toLowerCase());
-                    })
-                    .findFirst()
-                    .map(item -> {
-                        JSONObject obj = (JSONObject) item;
-                        return (int) (long) obj.get("stargazers_count");
-                    });
-
-            if (starCountOptional.isPresent()) {
-                codeSample.setStars(starCountOptional.get());
-                return codeSample;
-            }
-        } catch (ParseException e) {
-            logger.error("Unable to parse json", e);
-        }
-
-        // Not supported by gitub
-        codeSample.setStars(-1);
-        return codeSample;
     }
 }
