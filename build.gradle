@@ -50,3 +50,15 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.11'
     testCompile ratpack.dependency('test')
 }
+
+//docker-related
+task prepareDocker(type: Copy) {
+    dependsOn "shadowJar"
+    file("./bin").mkdirs()
+    from "$buildDir/libs/" + project.name + '-' + project.version + '-all.jar'
+    into "./bin"
+    rename(project.name + '-' + project.version + '-all.jar', project.name + '.jar')
+    doLast {
+        clean.execute()
+    }
+}
