@@ -37,14 +37,19 @@ public class CodeSearch implements ICodeSearch {
             throw new HttpException("Unable to query url: " + url);
         }
 
+        // Get raw code from github
         List<CodeSample> codeSamples = new ArrayList<>();
         codeSamplesJson.entrySet().stream()
                 .forEach(entry -> {
                     CodeSample codeSample = entry.getValue();
-                    String rawResponse = httpRequest.getRequest(RAW_CODE_URL + entry.getKey().get("id"));
-                    InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
-                    codeSample.setCodeInputStream(stream);
-                    codeSamples.add(codeSample);
+//                    String rawResponse = httpRequest.getRequest(RAW_CODE_URL + entry.getKey().get("id"));
+                    String rawResponse = httpRequest.getRequest(entry.getValue().getUrl());
+                    if (rawResponse != null) {
+                        codeSample.setCodeSnippet(rawResponse);
+                        InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
+                        codeSample.setCodeInputStream(stream);
+                        codeSamples.add(codeSample);
+                    }
                 });
         Collections.sort(codeSamples);
         return codeSamples;

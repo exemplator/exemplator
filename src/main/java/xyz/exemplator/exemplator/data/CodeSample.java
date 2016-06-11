@@ -5,9 +5,20 @@ import org.json.simple.JSONObject;
 import java.io.InputStream;
 
 public class CodeSample implements Comparable<CodeSample> {
-    private String url;
+    private String rawUrl;
+    private String userUrl;
     private int stars;
     private InputStream codeInputStream;
+    private String codeSnippet;
+
+    public String getCodeSnippet() {
+        return codeSnippet;
+    }
+
+    public void setCodeSnippet(String codeSnippet) {
+        this.codeSnippet = codeSnippet;
+    }
+
     private String userName;
     private String repository;
 
@@ -21,7 +32,7 @@ public class CodeSample implements Comparable<CodeSample> {
     }
 
     public String getUrl() {
-        return url;
+        return rawUrl;
     }
 
     public InputStream getCodeInputStream() {
@@ -33,7 +44,7 @@ public class CodeSample implements Comparable<CodeSample> {
     }
 
     public void setUrl(String url) {
-        this.url = url;
+        this.rawUrl = url;
     }
 
     public void setStars(int stars) {
@@ -58,6 +69,22 @@ public class CodeSample implements Comparable<CodeSample> {
 
     public void setRepository(String repository) {
         this.repository = repository;
+    }
+
+    public String getRawUrl() {
+        return rawUrl;
+    }
+
+    public void setRawUrl(String rawUrl) {
+        this.rawUrl = rawUrl;
+    }
+
+    public String getUserUrl() {
+        return userUrl;
+    }
+
+    public void setUserUrl(String userUrl) {
+        this.userUrl = userUrl;
     }
 
     @Override
