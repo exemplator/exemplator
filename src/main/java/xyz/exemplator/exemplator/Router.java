@@ -4,18 +4,19 @@ import ratpack.exec.Blocking;
 import ratpack.jackson.Jackson;
 import ratpack.server.RatpackServer;
 import ratpack.server.ServerConfig;
+import xyz.exemplator.exemplator.data.CodeSample;
 import xyz.exemplator.exemplator.data.ICodeSearch;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.sun.javafx.tools.resource.DeployResource.Type.data;
 import static ratpack.jackson.Jackson.fromJson;
-import static ratpack.jackson.Jackson.json;
-import static ratpack.jackson.Jackson.jsonNode;
 
 /**
  * @author LeanderK
@@ -59,14 +60,23 @@ public class Router {
                                                 .filter(Optional::isPresent)
                                                 .map(Optional::get)
                                                 .collect(Collectors.toList());
-                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage()));
+                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage(), Executors.newCachedThreadPool()));
+
                                     })
                                     .map(list -> list.stream()
                                                 .map(sample -> {
                                                     Response.Position position = new Response.Position(1, 1);
                                                     List<Response.Position> positions = new ArrayList<>();
                                                     positions.add(position);
-                                                    return new Response.Occurrence(sample.getUrl(), "", "", positions);
+                                                    CodeSample codeSample;
+                                                    try {
+                                                        if (sample.get().isPresent()) {
+                                                            codeSample = sample.get().get();
+                                                        } el
+                                                    } catch (InterruptedException | ExecutionException e) {
+                                                        e.printStackTrace();
+                                                    }
+                                                    return new Response.Occurrence(codeSample.getRawUrl(), "", "", positions);
                                                 })
                                                 .collect(Collectors.toList())
                                     )
