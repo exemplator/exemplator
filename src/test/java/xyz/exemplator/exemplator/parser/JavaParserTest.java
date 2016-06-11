@@ -4,6 +4,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.stmt.BlockStmt;
 import org.junit.Test;
 
 import java.io.FileInputStream;
@@ -51,7 +52,7 @@ public class JavaParserTest {
         FieldDeclaration node = (FieldDeclaration) cu.getTypes().get(0).getChildrenNodes().get(0);
         FieldDeclaration node2 = (FieldDeclaration) cu.getTypes().get(0).getChildrenNodes().get(1);
         FieldDeclaration node3 = (FieldDeclaration) cu.getTypes().get(0).getChildrenNodes().get(2);
-        MethodDeclaration node1 = (MethodDeclaration) cu.getChildrenNodes().get(4).getChildrenNodes().get(4);
+        BlockStmt block = (BlockStmt) cu.getChildrenNodes().get(4).getChildrenNodes().get(4).getChildrenNodes().get(1);
         System.out.println(cu);
     }
 }

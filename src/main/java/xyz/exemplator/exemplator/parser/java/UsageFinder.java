@@ -70,7 +70,7 @@ public class UsageFinder {
         method.getChildrenNodes().stream()
                 .filter(node -> node instanceof BlockStmt)
                 .map(node -> (BlockStmt) node)
-                .flatMap(node -> getUsagesForMethod(node, fieldQualifiers, identifierOnlyEnabled).stream())
+                .flatMap(node -> getUsagesForMethod(node, fieldQualifiers, identifierOnlyEnabled).stream());
         return new ArrayList<>();
     }
 
@@ -92,8 +92,29 @@ public class UsageFinder {
                             .map(id -> new LeftQualifier(valid, id))
                             .filter(qual -> fieldQualifiers.contains(qual) || localVars.contains(qual))
                             .forEach(qual -> {
-                                if (qual.)
+                                if (qual.isSameType() && localVars.contains(qual)) {
+                                    localVars.remove(qual);
+                                } else {
+                                    localVars.add(qual);
+                                }
                             });
+                } else if (expression instanceof AssignExpr) {
+                    if (!command.getClassName().isPresent()) {
+                        continue;
+                    }
+                    String classname = command.getClassName().get();
+                    AssignExpr declr = (AssignExpr) expression;
+                    Expression target = declr.getTarget();
+                    if (target instanceof NameExpr) {
+                        NameExpr nameExpr = (NameExpr) target;
+                        LeftQualifier leftQualifier = new LeftQualifier(false, nameExpr.getName());
+                        if (fieldQualifiers.contains(leftQualifier) || localVars.contains(leftQualifier)) {
+                            ((AssignExpr) expression).getTarget()
+                            boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported)
+                        }
+                    } else if (target instanceof FieldAccessExpr) {
+                        FieldAccessExpr accessExpr = (FieldAccessExpr) target;
+                    }
                 }
             }
         }

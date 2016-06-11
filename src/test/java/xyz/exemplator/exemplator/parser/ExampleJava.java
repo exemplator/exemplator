@@ -18,6 +18,7 @@ public class ExampleJava {
         List<String> list = new ArrayList<>();
         list.add("haha");
         test2 = new LinkedList<>();
+        this.test2 = new LinkedList<>();
         test2();
         System.out.println(list);
     }
