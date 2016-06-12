@@ -9,6 +9,7 @@ import ratpack.server.ServerConfig;
 import xyz.exemplator.exemplator.data.CodeSample;
 import xyz.exemplator.exemplator.data.ICodeSearch;
 import xyz.exemplator.exemplator.parser.Parsers;
+import xyz.exemplator.exemplator.parser.Selection;
 import xyz.exemplator.exemplator.parser.java.Command;
 
 import java.util.ArrayList;
@@ -50,6 +51,11 @@ public class Router {
                             ctx.getResponse().getHeaders().add("access-control-max-age", "86400");
                             ctx.next();
                         })
+                        .options(ctx -> {
+                            ctx.getResponse().status(204);
+                            ctx.getResponse().contentType("text/plain");
+                            ctx.render("");
+                        })
                         .post("search", ctx -> {
                             if (!ctx.getRequest().getContentType().isJson()) {
                                 ctx.getResponse().status(500);
@@ -72,13 +78,7 @@ public class Router {
                                                     CompletableFuture<Optional<CodeSample>>[] parsedFutures = (CompletableFuture<Optional<CodeSample>>[]) futures.stream()
                                                             .map(future -> future.thenApply(opt ->
                                                                     opt.flatMap(sample ->
-                                                                            Parsers.from("JAVA", sample.getCodeInputStream())
-                                                                                    .map(parser -> parser.getMatches(command))
-                                                                                    .map(matches -> {
-                                                                                        sample.setSelections(matches);
-                                                                                        return sample;
-                                                                                    })
-
+                                                                            parseOrReturn(sample, command, request)
                                                                     )
                                                             ))
                                                             .toArray(size -> new CompletableFuture[futures.size()]);
@@ -106,6 +106,20 @@ public class Router {
                         })
                 )
         );
+    }
+
+    public Optional<CodeSample> parseOrReturn(CodeSample sample, Command command, Request request) {
+        if (request.getToken().isPresent()) {
+            sample.getSelections().add(new Selection(new Position(-1, -1), new Position(-1, -1)));
+            return Optional.of(sample);
+        } else {
+            return Parsers.from("JAVA", sample.getCodeInputStream())
+                    .map(parser -> parser.getMatches(command))
+                    .map(matches -> {
+                        sample.setSelections(matches);
+                        return sample;
+                    });
+        }
     }
 
     private Response.Occurrence createOccurence(CodeSample codeSample) {
