@@ -89,7 +89,7 @@ public class JavaParser implements Parser {
         }
     }
 
-    private List<Integer> getUsages(ClassInfo classInfo, Command<?> command) {
+    private List<Integer> getUsages(ClassInfo classInfo, Command command) {
         Predicate<ImportDeclaration> isMentioned = importDeclaration -> {
             if (importDeclaration.isAsterisk()) {
                 if (classInfo.getPackageName().isPresent()) {
@@ -123,7 +123,7 @@ public class JavaParser implements Parser {
         return null;
     }
 
-    private List<Integer> checkType(TypeDeclaration type, Command<?> command, Set<String> valid,
+    private List<Integer> checkType(TypeDeclaration type, Command command, Set<String> valid,
                                     boolean imported, boolean staticImported) {
         boolean staticImportedEnabled = command.getIdentifierOnlyValid().test(type, staticImported);
         return null;

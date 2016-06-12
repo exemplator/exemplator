@@ -29,12 +29,12 @@ import static com.sun.tools.doclint.Entity.nu;
 public class UsageFinder {
     private final CompilationUnit cu;
     private final TypeDeclaration type;
-    private final Command<?> command;
+    private final Command command;
     private final boolean imported;
     private final boolean identifierOnly;
     private final List<QualifiedNameExpr> outerQualifiedNameExprs;
 
-    public UsageFinder(CompilationUnit cu, TypeDeclaration type, Command<?> command, boolean imported, boolean identifierOnly, List<QualifiedNameExpr> outerQualifiedNameExprs) {
+    public UsageFinder(CompilationUnit cu, TypeDeclaration type, Command command, boolean imported, boolean identifierOnly, List<QualifiedNameExpr> outerQualifiedNameExprs) {
         this.cu = cu;
         this.type = type;
         this.command = command;
@@ -43,7 +43,7 @@ public class UsageFinder {
         this.identifierOnly = identifierOnly;
     }
 
-    private List<Selection> checkTypeForUsages() {
+    List<Selection> checkTypeForUsages() {
         boolean identifierOnlyEnabled = command.getIdentifierOnlyValid().test(type, identifierOnly);
         Set<LeftQualifier> fieldQualifiers = new HashSet<>();
         List<Selection> usages = new ArrayList<>();
@@ -68,11 +68,11 @@ public class UsageFinder {
     }
 
     private List<Selection> getUsages(MethodDeclaration method, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
-        method.getChildrenNodes().stream()
+        return method.getChildrenNodes().stream()
                 .filter(node -> node instanceof BlockStmt)
                 .map(node -> (BlockStmt) node)
-                .flatMap(node -> getUsagesForBlock(node, fieldQualifiers, identifierOnlyEnabled, new HashSet<>()).stream());
-        return new ArrayList<>();
+                .flatMap(node -> getUsagesForBlock(node, fieldQualifiers, identifierOnlyEnabled, new HashSet<>()).stream())
+                .collect(Collectors.toList());
     }
 
     private List<Selection> getUsagesForBlock(BlockStmt stmt, Set<LeftQualifier> fieldQualifiers,
@@ -162,11 +162,24 @@ public class UsageFinder {
                         } else if (scope != null && scope instanceof FieldAccessExpr) {
                             FieldAccessExpr fieldAccessExpr = (FieldAccessExpr) scope;
                             Expression fieldScope = fieldAccessExpr.getScope();
+                            String field = fieldAccessExpr.getField();
                             if (fieldScope instanceof ThisExpr) {
-
+                                sameType = isClassApplicableForMethodCall(fieldQualifiers, new HashSet<>(), new HashSet<>(),
+                                        localVarsBlocking, field);
+                            } else if (fieldScope instanceof FieldAccessExpr) {
+                                Boolean packageMatches = command.getPackageName()
+                                        .map(packageName -> packageName.equals(fieldScope.toString()))
+                                        .orElse(true);
+                                if (packageMatches) {
+                                    sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                                            localVarsBlocking, field);
+                                } else {
+                                    sameType = false;
+                                }
+                            } else {
+                                sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                                        localVarsBlocking, field);
                             }
-                            sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
-                                    localVarsBlocking, name);
                         } else {
                             if (!identifierOnlyEnabled && command.getClassName().isPresent()) {
                                 sameType = false;
@@ -207,8 +220,16 @@ public class UsageFinder {
 
     private boolean isClassApplicableForMethodCall(Set<LeftQualifier> fieldQualifiers, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, String name) {
         LeftQualifier leftQualifier = new LeftQualifier(true, name);
+        boolean matchesLeftQual = true;
         if (!localVars.contains(leftQualifier) && !inheritedLocalVars.contains(leftQualifier)) {
             if (!fieldQualifiers.contains(leftQualifier) || localVarsBlocking.contains(leftQualifier)) {
+                matchesLeftQual = false;
+            }
+        }
+        if (!matchesLeftQual) {
+            if (imported && command.getClassName().isPresent()) {
+                return name.equals(command.getClassName().get());
+            } else {
                 return false;
             }
         }
@@ -331,6 +352,8 @@ public class UsageFinder {
             if (typeName.equals(className)) {
                 return true;
             }
+        } else if (type instanceof ReferenceType) {
+            return checkType(((ReferenceType) type).getType(), className, packageName, imported);
         }
         return false;
     }

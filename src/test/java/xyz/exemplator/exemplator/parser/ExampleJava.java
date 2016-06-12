@@ -23,6 +23,7 @@ public class ExampleJava {
         test2 = new LinkedList<>();
         this.test2 = new LinkedList<>();
         test2();
+        test.add(null);
         System.out.println(list);
         for (String test : list) {
             System.out.println(test);
@@ -37,6 +38,7 @@ public class ExampleJava {
 
         Function<String, String> whaat = s -> s;
         Arrays.sort(new String[]{"a", "b"});
+        java.util.Arrays.sort(new String[]{"a", "b"});
         this.test2.add("");
 
         if (list != null) {
