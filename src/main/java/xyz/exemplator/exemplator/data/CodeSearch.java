@@ -1,6 +1,7 @@
 package xyz.exemplator.exemplator.data;
 
 import org.apache.http.HttpException;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -10,6 +11,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -136,6 +139,15 @@ public class CodeSearch implements ICodeSearch {
     private String createQuery(List<String> searchTerms, int page, int vcs, int language) {
         if (searchTerms != null && !searchTerms.isEmpty()) {
             String searchString = searchTerms.stream()
+                    .map(String::trim)
+//                    .map(string -> {
+//                        try {
+//                            return URLEncoder.encode(string, "UTF-8");
+//                        } catch (UnsupportedEncodingException e) {
+//                            return "";
+//                        }
+//                    })
+//                    .filter(string -> !string.isEmpty())
                     .collect(Collectors.joining("+"));
             return SEARCHCODE_API_URL + searchString + "&p=" + page + "&src=" + vcs + "&lan=" + language;
         }

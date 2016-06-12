@@ -60,7 +60,7 @@ public class JavaParser implements Parser {
                 }
             } else {
                 if (command.getPackageName().isPresent()) {
-                    return importDeclaration.getName().toString().equals(command.getPackageName().get());
+                    return importDeclaration.getName().toString().equals(command.getPackageName().get() + "." + command.getClassName().get());
                 } else if (command.getClassName().isPresent()) {
                     return importDeclaration.getName().toString().endsWith(command.getClassName().get());
                 } else {

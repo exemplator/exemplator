@@ -18,10 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.sun.tools.doclint.Entity.bull;
-import static com.sun.tools.doclint.Entity.le;
-import static com.sun.tools.doclint.Entity.nu;
-
 /**
  * @author LeanderK
  * @version 1.0
@@ -64,7 +60,19 @@ public class UsageFinder {
         List<Selection> selections = type.getChildrenNodes().stream()
                 .filter(node -> node instanceof MethodDeclaration)
                 .map(node -> (MethodDeclaration) node)
-                .flatMap(node -> getUsages(node, fieldQualifiers, identifierOnlyEnabled).stream())
+                .flatMap(node -> {
+                    List<Parameter> parameters = node.getParameters();
+                    HashSet<LeftQualifier> methodSet = new HashSet<>();
+                    methodSet.addAll(fieldQualifiers);
+                    if (command.getClassName().isPresent()) {
+                        methodSet.addAll(parameters.stream()
+                                .filter(parameter -> checkType(parameter.getType(), command.getClassName().get(), command.getPackageName().orElse(null), imported))
+                                .map(parameter -> new LeftQualifier(true, parameter.getId().getName()))
+                                .collect(Collectors.toList()));
+                    }
+
+                    return getUsages(node, methodSet, identifierOnlyEnabled).stream();
+                })
                 .collect(Collectors.toList());
         usages.addAll(selections);
         return usages;
@@ -89,25 +97,8 @@ public class UsageFinder {
             if (statement instanceof ExpressionStmt) {
                 Expression expression = ((ExpressionStmt) statement).getExpression();
                 if (expression instanceof VariableDeclarationExpr) {
-                    VariableDeclarationExpr declr = (VariableDeclarationExpr) expression;
-                    usages.addAll(handleArgs(declr.getVars(), localVars, fieldQualifiers, identifierOnlyEnabled));
-                    if (!command.getClassName().isPresent()) {
-                        continue;
-                    }
-                    String classname = command.getClassName().get();
-                    Type type = declr.getType();
-                    boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
-
-                    declr.getVars().stream()
-                            .map(var -> var.getId().toString())
-                            .map(id -> new LeftQualifier(valid, id))
-                            .forEach(qual -> {
-                                if (qual.isSameType()) {
-                                    localVars.add(qual);
-                                } else if (fieldQualifiers.contains(qual)) {
-                                    localVarsBlocking.add(qual);
-                                }
-                            });
+                    handleVariableDeclarationExpr(fieldQualifiers, identifierOnlyEnabled, localVars, localVarsBlocking, usages, (VariableDeclarationExpr) expression);
+                    continue;
                 } else if (expression instanceof AssignExpr) {
                     if (!command.getClassName().isPresent()) {
                         continue;
@@ -216,9 +207,53 @@ public class UsageFinder {
             } else if (statement instanceof IfStmt) {
                 usages.addAll(getSelectionsFromIf((IfStmt) statement, fieldQualifiers, identifierOnlyEnabled,
                         inheritedLocalVars, localVars, localVarsBlocking));
+            } else if (statement instanceof TryStmt) {
+                TryStmt tryStmt = (TryStmt) statement;
+                HashSet<LeftQualifier> newParent = new HashSet<>();
+                newParent.addAll(fieldQualifiers);
+                newParent.addAll(localVars);
+                HashSet<LeftQualifier> local = new HashSet<>();
+                tryStmt.getResources()
+                        .forEach(declr -> handleVariableDeclarationExpr(newParent, identifierOnlyEnabled, local, localVarsBlocking, usages, declr));
+                BlockStmt tryBlock = tryStmt.getTryBlock();
+                if (tryBlock != null) {
+                    usages.addAll(getUsagesForBlock(tryBlock, fieldQualifiers, identifierOnlyEnabled, localVars, local, localVarsBlocking));
+                }
+
+                tryStmt.getCatchs().forEach(catchClause -> {
+                    getUsagesForBlock(catchClause.getCatchBlock(), fieldQualifiers, identifierOnlyEnabled, localVars, local, localVarsBlocking);
+                });
+                BlockStmt finallyBlock = tryStmt.getFinallyBlock();
+                if (finallyBlock != null) {
+                    usages.addAll(getUsagesForBlock(finallyBlock, fieldQualifiers, identifierOnlyEnabled, localVars, local, localVarsBlocking));
+
+                }
             }
         }
         return usages;
+    }
+
+    private void handleVariableDeclarationExpr(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled,
+                                               Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, VariableDeclarationExpr expression) {
+        VariableDeclarationExpr declr = expression;
+        usages.addAll(handleArgs(declr.getVars(), localVars, fieldQualifiers, identifierOnlyEnabled));
+        if (!command.getClassName().isPresent()) {
+            return;
+        }
+        String classname = command.getClassName().get();
+        Type type = declr.getType();
+        boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+
+        declr.getVars().stream()
+                .map(var -> var.getId().toString())
+                .map(id -> new LeftQualifier(valid, id))
+                .forEach(qual -> {
+                    if (qual.isSameType()) {
+                        localVars.add(qual);
+                    } else if (fieldQualifiers.contains(qual)) {
+                        localVarsBlocking.add(qual);
+                    }
+                });
     }
 
     private boolean isClassApplicableForMethodCall(Set<LeftQualifier> fieldQualifiers, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, String name) {
@@ -239,18 +274,25 @@ public class UsageFinder {
         return true;
     }
 
-    private List<Selection> getSelectionsFromIf(IfStmt ifStmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars,  Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
-        Statement thenStmt = ifStmt.getThenStmt();
-        if (thenStmt instanceof BlockStmt) {
-            return getUsagesForBlock((BlockStmt) thenStmt, fieldQualifiers, identifierOnlyEnabled,
-                    inheritedLocalVars, localVars, localVarsBlocking);
-        }
-        Statement elseStmt = ifStmt.getElseStmt();
-        if (elseStmt instanceof BlockStmt) {
-            return getUsagesForBlock((BlockStmt) elseStmt, fieldQualifiers, identifierOnlyEnabled,
-                    inheritedLocalVars, localVars, localVarsBlocking);
-        } else if (elseStmt instanceof IfStmt) {
-            return getSelectionsFromIf(ifStmt, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+    private List<Selection> getSelectionsFromIf(IfStmt ifStmtParam, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars,  Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
+        List<Selection> selections = new ArrayList<>();
+        IfStmt ifStmt = ifStmtParam;
+        while (ifStmt != null) {
+            Statement thenStmt = ifStmt.getThenStmt();
+            if (thenStmt instanceof BlockStmt) {
+                selections.addAll(getUsagesForBlock((BlockStmt) thenStmt, fieldQualifiers, identifierOnlyEnabled,
+                        inheritedLocalVars, localVars, localVarsBlocking));
+            }
+            Statement elseStmt = ifStmt.getElseStmt();
+            if (elseStmt instanceof BlockStmt) {
+                selections.addAll(getUsagesForBlock((BlockStmt) elseStmt, fieldQualifiers, identifierOnlyEnabled,
+                        inheritedLocalVars, localVars, localVarsBlocking));
+                ifStmt = null;
+            } else if (elseStmt instanceof IfStmt) {
+                ifStmt = (IfStmt) elseStmt;
+            } else {
+                ifStmt = null;
+            }
         }
         return new ArrayList<>();
     }

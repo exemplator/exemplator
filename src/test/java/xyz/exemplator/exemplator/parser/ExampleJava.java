@@ -1,5 +1,8 @@
 package xyz.exemplator.exemplator.parser;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.*;
@@ -27,6 +30,19 @@ public class ExampleJava {
         System.out.println(list);
         for (String test : list) {
             System.out.println(test);
+        }
+
+        try {
+            InputStream in = new FileInputStream("test");
+            in.read();
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
+        }
+
+        try (InputStream in = new FileInputStream("test")) {
+            in.read();
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
         }
 
         list.forEach(System.out::println);

@@ -20,10 +20,29 @@ public class Request {
                    @JsonProperty("method")String methodName,
                    @JsonProperty("token")String token,
                    @JsonProperty("page")int page) {
-        this.packageName = packageName;
-        this.className = className;
-        this.methodName = methodName;
-        this.token = token;
+        if (packageName != null && packageName.isEmpty()) {
+            this.packageName = null;
+        } else {
+            this.packageName = packageName;
+        }
+
+        if (className != null && className.isEmpty()) {
+            this.className = null;
+        } else {
+            this.className = className;
+        }
+
+        if (methodName != null && methodName.isEmpty()) {
+            this.methodName = null;
+        } else {
+            this.methodName = methodName;
+        }
+
+        if (token != null && token.isEmpty()) {
+            this.token = null;
+        } else {
+            this.token = token;
+        }
         int actualPage = 0;
         if (page != -1 ) {
             actualPage = page;
