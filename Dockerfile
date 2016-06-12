@@ -6,7 +6,7 @@ COPY settings.gradle /settings.gradle
 COPY gradlew /gradlew
 COPY gradle /gradle
 
-RUN /gradlew shadowJar
+RUN /gradlew prepareDocker
 RUN /gradlew clean
 RUN rm -rf src/
 RUN rm -rf .gradle/
