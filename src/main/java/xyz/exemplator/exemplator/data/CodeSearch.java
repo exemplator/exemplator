@@ -57,6 +57,8 @@ public class CodeSearch implements ICodeSearch {
             HTTPRequest httpRequest = new HTTPRequest();
             String rawResponse = httpRequest.getRequest(codeSample.getUrl());
             if (rawResponse != null) {
+                rawResponse = rawResponse.replace("    ", "  ");
+                rawResponse = rawResponse.trim();
                 codeSample.setCode(rawResponse);
                 InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
                 codeSample.setCodeInputStream(stream);

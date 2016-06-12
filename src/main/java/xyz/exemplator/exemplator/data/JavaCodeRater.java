@@ -14,9 +14,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Created by root on 11.06.16.
- */
 class JavaCodeRater {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -46,7 +43,6 @@ class JavaCodeRater {
 
         String gitRepo = (String) codeSample.get("repo");
         String location = (String) codeSample.get("location");
-        Long id = (Long) codeSample.get("id");
         String[] gitData = gitRepo.substring(0, gitRepo.length() - 4).split("/");
 
         String user = gitData[3];
