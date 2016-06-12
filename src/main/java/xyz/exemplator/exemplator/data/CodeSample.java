@@ -1,10 +1,12 @@
 package xyz.exemplator.exemplator.data;
 
-import org.json.simple.JSONObject;
+import xyz.exemplator.exemplator.parser.Selection;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class CodeSample implements Comparable<CodeSample> {
     private String rawUrl;
@@ -12,6 +14,7 @@ public class CodeSample implements Comparable<CodeSample> {
     private int stars = 0;
     private InputStream codeInputStream;
     private String codeSnippet;
+    private List<Selection> selections = new ArrayList();
 
     public String getCode() {
         return codeSnippet;
@@ -83,6 +86,14 @@ public class CodeSample implements Comparable<CodeSample> {
 
     public void setUserUrl(String userUrl) {
         this.userUrl = userUrl;
+    }
+
+    public void setSelections(List<Selection> selections) {
+        this.selections = selections;
+    }
+
+    public List<Selection> getSelections() {
+        return selections;
     }
 
     @Override

@@ -1,5 +1,6 @@
 package xyz.exemplator.exemplator;
 
+import com.github.javaparser.Position;
 import ratpack.exec.Blocking;
 import ratpack.exec.Promise;
 import ratpack.jackson.Jackson;
@@ -7,8 +8,11 @@ import ratpack.server.RatpackServer;
 import ratpack.server.ServerConfig;
 import xyz.exemplator.exemplator.data.CodeSample;
 import xyz.exemplator.exemplator.data.ICodeSearch;
+import xyz.exemplator.exemplator.parser.Parsers;
+import xyz.exemplator.exemplator.parser.java.Command;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -62,33 +66,57 @@ public class Router {
                                                 .filter(Optional::isPresent)
                                                 .map(Optional::get)
                                                 .collect(toList());
-                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage(), executorService));
-                                    })
-                                    .map(futures ->
-                                            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]))
-                                                    .thenApply(v -> futures.stream()
-                                                            .map(CompletableFuture::join)
-                                                            .collect(toList())
-                                                    )
-                                    )
-                                    .map(future -> future.thenApply(list -> list.stream()
-                                                .filter(Optional::isPresent)
-                                            .map(Optional::get)
-                                            .collect(Collectors.toList()))
-                                    )
-                                    .flatMap((ratpack.func.Function<CompletableFuture<List<CodeSample>>, Promise<List<CodeSample>>>)future ->
-                                            Promise.async(downstream -> downstream.accept(future)))
-                                    .map(list -> {
-                                        List<Response.Position> positions = new ArrayList<>();
-                                        positions.add(new Response.Position(1, 1));
-                                        return list.stream()
-                                                .map(sample -> new Response.Occurrence(sample.getRawUrl(), sample.getUserUrl(), sample.getCode(), positions))
-                                                .collect(Collectors.toList());
-                                    })
-                                    .map(Response::new)
-                                    .map(Jackson::json));
+                                        Command command = new Command(request.getClassName().orElse(null), request.getPackageName().orElse(null), request.getMethodName().orElse(null));
+                                        return Blocking.get(() -> codeSearch.fetch(searchTerms, request.getPage(), executorService))
+                                                .map(futures -> {
+                                                    CompletableFuture<Optional<CodeSample>>[] parsedFutures = (CompletableFuture<Optional<CodeSample>>[]) futures.stream()
+                                                            .map(future -> future.thenApply(opt ->
+                                                                    opt.flatMap(sample ->
+                                                                            Parsers.from("JAVA", sample.getCodeInputStream())
+                                                                                    .map(parser -> parser.getMatches(command))
+                                                                                    .map(matches -> {
+                                                                                        sample.setSelections(matches);
+                                                                                        return sample;
+                                                                                    })
+
+                                                                    )
+                                                            ))
+                                                            .toArray(size -> new CompletableFuture[futures.size()]);
+
+                                                    return CompletableFuture.allOf(parsedFutures)
+                                                            .thenApply(v -> Arrays.stream(parsedFutures)
+                                                                    .map(CompletableFuture::join)
+                                                                    .collect(toList())
+                                                            );
+                                                })
+                                                .map(future -> future.thenApply(list -> list.stream()
+                                                        .filter(Optional::isPresent)
+                                                        .map(Optional::get)
+                                                        .filter(codeSample -> !codeSample.getSelections().isEmpty())
+                                                        .collect(Collectors.toList()))
+                                                )
+                                                .flatMap((ratpack.func.Function<CompletableFuture<List<CodeSample>>, Promise<List<CodeSample>>>)future ->
+                                                        Promise.async(downstream -> downstream.accept(future)))
+                                                .map(list -> list.stream()
+                                                        .map(this::createOccurence)
+                                                        .collect(Collectors.toList()))
+                                                .map(Response::new)
+                                                .map(Jackson::json);
+                                    }));
                         })
                 )
         );
+    }
+
+    private Response.Occurrence createOccurence(CodeSample codeSample) {
+        List<Response.Selection> selections = codeSample.getSelections().stream()
+                .map(selection -> {
+                    Response.Position start = new Response.Position(selection.getStart().getLine(), selection.getStart().getColumn());
+                    Response.Position end = new Response.Position(selection.getEnd().getLine(), selection.getEnd().getColumn());
+                    return new Response.Selection(start, end);
+                })
+                .collect(Collectors.toList());
+
+        return new Response.Occurrence(codeSample.getRawUrl(), codeSample.getUserUrl(), codeSample.getCode(), selections);
     }
 }
