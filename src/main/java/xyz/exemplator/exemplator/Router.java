@@ -78,7 +78,6 @@ public class Router {
                                                                                         sample.setSelections(matches);
                                                                                         return sample;
                                                                                     })
-                                                                                    .filter(codeSample -> !codeSample.getSelections().isEmpty())
 
                                                                     )
                                                             ))
@@ -93,6 +92,7 @@ public class Router {
                                                 .map(future -> future.thenApply(list -> list.stream()
                                                         .filter(Optional::isPresent)
                                                         .map(Optional::get)
+                                                        .filter(codeSample -> !codeSample.getSelections().isEmpty())
                                                         .collect(Collectors.toList()))
                                                 )
                                                 .flatMap((ratpack.func.Function<CompletableFuture<List<CodeSample>>, Promise<List<CodeSample>>>)future ->
