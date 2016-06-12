@@ -140,14 +140,14 @@ public class CodeSearch implements ICodeSearch {
         if (searchTerms != null && !searchTerms.isEmpty()) {
             String searchString = searchTerms.stream()
                     .map(String::trim)
-                    .map(string -> {
-                        try {
-                            return URLEncoder.encode(string, "UTF-8");
-                        } catch (UnsupportedEncodingException e) {
-                            return "";
-                        }
-                    })
-                    .filter(string -> !string.isEmpty())
+//                    .map(string -> {
+//                        try {
+//                            return URLEncoder.encode(string, "UTF-8");
+//                        } catch (UnsupportedEncodingException e) {
+//                            return "";
+//                        }
+//                    })
+//                    .filter(string -> !string.isEmpty())
                     .collect(Collectors.joining("+"));
             return SEARCHCODE_API_URL + searchString + "&p=" + page + "&src=" + vcs + "&lan=" + language;
         }
