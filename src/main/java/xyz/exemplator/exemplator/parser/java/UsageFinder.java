@@ -162,7 +162,9 @@ public class UsageFinder {
                         } else if (scope != null && scope instanceof FieldAccessExpr) {
                             FieldAccessExpr fieldAccessExpr = (FieldAccessExpr) scope;
                             Expression fieldScope = fieldAccessExpr.getScope();
-                            if (fieldScope)
+                            if (fieldScope instanceof ThisExpr) {
+
+                            }
                             sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
                                     localVarsBlocking, name);
                         } else {
