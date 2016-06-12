@@ -44,7 +44,10 @@ public class UsageFinder {
     }
 
     List<Selection> checkTypeForUsages() {
-        boolean identifierOnlyEnabled = command.getIdentifierOnlyValid().test(type, identifierOnly);
+        //TODO check for extends or static imports!
+//        boolean identifierOnlyEnabled = command.getIdentifierOnlyValid().test(type, identifierOnly);
+//        boolean identifierOnlyEnabled = type.
+        boolean identifierOnlyEnabled = false;
         Set<LeftQualifier> fieldQualifiers = new HashSet<>();
         List<Selection> usages = new ArrayList<>();
         if (command.getClassName().isPresent()) {

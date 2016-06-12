@@ -11,21 +11,14 @@ import java.util.function.BiPredicate;
  * @version 1.0
  */
 public class Command {
-    private final BiPredicate<TypeDeclaration, Boolean> identifierOnlyValid;
     private final String className;
     private final String packageName;
     private final String methodName;
 
-    public Command(BiPredicate<TypeDeclaration, Boolean> identifierOnlyValid,
-                   String className, String packageName, String methodName) {
-        this.identifierOnlyValid = identifierOnlyValid;
+    public Command(String className, String packageName, String methodName) {
         this.className = className;
         this.packageName = packageName;
         this.methodName = methodName;
-    }
-
-    public BiPredicate<TypeDeclaration, Boolean> getIdentifierOnlyValid() {
-        return identifierOnlyValid;
     }
 
     public Optional<String> getClassName() {

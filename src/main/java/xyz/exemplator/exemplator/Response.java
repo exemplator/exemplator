@@ -21,17 +21,17 @@ public class Response {
         private String rawUrl;
         private String userUrl;
         private String code;
-        private List<Position> positions;
+        private List<Selection> selections;
 
-        public Occurrence(String rawUrl, String userUrl, String code, List<Position> positions) {
+        public Occurrence(String rawUrl, String userUrl, String code, List<Selection> selections) {
             this.rawUrl = rawUrl;
             this.userUrl = userUrl;
             this.code = code;
-            this.positions = positions;
+            this.selections = selections;
         }
 
-        public List<Position> getPositions() {
-            return positions;
+        public List<Selection> getSelections() {
+            return selections;
         }
 
         public String getCode() {
@@ -46,6 +46,25 @@ public class Response {
             return userUrl;
         }
     }
+
+    static class Selection {
+        private Position start;
+        private Position end;
+
+        public Selection(Position start, Position end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public Position getStart() {
+            return start;
+        }
+
+        public Position getEnd() {
+            return end;
+        }
+    }
+
 
     static class Position {
         private int line;
