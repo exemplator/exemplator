@@ -239,18 +239,25 @@ public class UsageFinder {
         return true;
     }
 
-    private List<Selection> getSelectionsFromIf(IfStmt ifStmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars,  Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
-        Statement thenStmt = ifStmt.getThenStmt();
-        if (thenStmt instanceof BlockStmt) {
-            return getUsagesForBlock((BlockStmt) thenStmt, fieldQualifiers, identifierOnlyEnabled,
-                    inheritedLocalVars, localVars, localVarsBlocking);
-        }
-        Statement elseStmt = ifStmt.getElseStmt();
-        if (elseStmt instanceof BlockStmt) {
-            return getUsagesForBlock((BlockStmt) elseStmt, fieldQualifiers, identifierOnlyEnabled,
-                    inheritedLocalVars, localVars, localVarsBlocking);
-        } else if (elseStmt instanceof IfStmt) {
-            return getSelectionsFromIf(ifStmt, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+    private List<Selection> getSelectionsFromIf(IfStmt ifStmtParam, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars,  Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
+        List<Selection> selections = new ArrayList<>();
+        IfStmt ifStmt = ifStmtParam;
+        while (ifStmt != null) {
+            Statement thenStmt = ifStmt.getThenStmt();
+            if (thenStmt instanceof BlockStmt) {
+                selections.addAll(getUsagesForBlock((BlockStmt) thenStmt, fieldQualifiers, identifierOnlyEnabled,
+                        inheritedLocalVars, localVars, localVarsBlocking));
+            }
+            Statement elseStmt = ifStmt.getElseStmt();
+            if (elseStmt instanceof BlockStmt) {
+                selections.addAll(getUsagesForBlock((BlockStmt) elseStmt, fieldQualifiers, identifierOnlyEnabled,
+                        inheritedLocalVars, localVars, localVarsBlocking));
+                ifStmt = null;
+            } else if (elseStmt instanceof IfStmt) {
+                ifStmt = (IfStmt) elseStmt;
+            } else {
+                ifStmt = null;
+            }
         }
         return new ArrayList<>();
     }
