@@ -1,7 +1,5 @@
 package xyz.exemplator.exemplator.parser.java;
 
-import static com.sun.tools.doclint.Entity.ge;
-
 /**
  * @author LeanderK
  * @version 1.0

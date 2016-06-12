@@ -18,10 +18,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.sun.tools.doclint.Entity.bull;
-import static com.sun.tools.doclint.Entity.le;
-import static com.sun.tools.doclint.Entity.nu;
-
 /**
  * @author LeanderK
  * @version 1.0

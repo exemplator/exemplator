@@ -136,6 +136,7 @@ public class CodeSearch implements ICodeSearch {
     private String createQuery(List<String> searchTerms, int page, int vcs, int language) {
         if (searchTerms != null && !searchTerms.isEmpty()) {
             String searchString = searchTerms.stream()
+                    .map(String::trim)
                     .collect(Collectors.joining("+"));
             return SEARCHCODE_API_URL + searchString + "&p=" + page + "&src=" + vcs + "&lan=" + language;
         }
