@@ -52,7 +52,7 @@ public class JavaParserTest {
         FieldDeclaration node = (FieldDeclaration) cu.getTypes().get(0).getChildrenNodes().get(0);
         FieldDeclaration node2 = (FieldDeclaration) cu.getTypes().get(0).getChildrenNodes().get(1);
         FieldDeclaration node3 = (FieldDeclaration) cu.getTypes().get(0).getChildrenNodes().get(2);
-        BlockStmt block = (BlockStmt) cu.getChildrenNodes().get(4).getChildrenNodes().get(4).getChildrenNodes().get(1);
+        BlockStmt blockStmt = (BlockStmt) cu.getTypes().get(0).getChildrenNodes().get(4).getChildrenNodes().get(1);
         System.out.println(cu);
     }
 }

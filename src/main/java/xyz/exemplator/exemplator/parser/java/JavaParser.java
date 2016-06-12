@@ -7,8 +7,6 @@ import com.github.javaparser.ast.body.TypeDeclaration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import xyz.exemplator.exemplator.parser.Parser;
-import xyz.exemplator.exemplator.parser.conditions.ClassCondition;
-import xyz.exemplator.exemplator.parser.conditions.Condition;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,15 +45,8 @@ public class JavaParser implements Parser {
         return Optional.of(new JavaParser(cu));
     }
 
-    public Optional<Integer> test(Condition condition) {
-        if (condition instanceof ClassCondition) {
-            return testClass((ClassCondition) condition);
-        }
-        return Optional.empty();
-    }
-
-    private Optional<Integer> testClass(ClassCondition classCondition) {
-        String fullClassName = classCondition.getFullClassName();
+    private Optional<Integer> testClass() {
+        String fullClassName = "";
 //        cu.getTypes().get(0).
 //        splitFullClassName(fullClassName)
 //                .map(split -> {

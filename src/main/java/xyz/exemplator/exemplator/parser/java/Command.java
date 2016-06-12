@@ -2,7 +2,6 @@ package xyz.exemplator.exemplator.parser.java;
 
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.TypeDeclaration;
-import org.jooq.lambda.function.Function3;
 
 import java.util.Optional;
 import java.util.function.BiPredicate;
@@ -14,18 +13,18 @@ import java.util.function.BiPredicate;
 public class Command<X extends Node> {
     private final Class<X> target;
     private final BiPredicate<TypeDeclaration, Boolean> identifierOnlyValid;
-    private final Function3<X, Boolean, Boolean, Boolean> checkToken;
     private final String className;
     private final String packageName;
+    private final String methodName;
 
     public Command(Class<X> target,
                    BiPredicate<TypeDeclaration, Boolean> identifierOnlyValid,
-                   Function3<X, Boolean, Boolean, Boolean> checkToken, String className, String packageName) {
+                   String className, String packageName, String methodName) {
         this.target = target;
         this.identifierOnlyValid = identifierOnlyValid;
-        this.checkToken = checkToken;
         this.className = className;
         this.packageName = packageName;
+        this.methodName = methodName;
     }
 
     public Class<X> getTarget() {
@@ -36,15 +35,15 @@ public class Command<X extends Node> {
         return identifierOnlyValid;
     }
 
-    public Function3<X, Boolean, Boolean, Boolean> getCheckToken() {
-        return checkToken;
-    }
-
     public Optional<String> getClassName() {
         return Optional.ofNullable(className);
     }
 
     public Optional<String> getPackageName() {
         return Optional.ofNullable(packageName);
+    }
+
+    public Optional<String> getMethodName() {
+        return Optional.ofNullable(methodName);
     }
 }

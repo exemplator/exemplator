@@ -3,6 +3,9 @@ package xyz.exemplator.exemplator.parser;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.*;
+import java.util.function.Function;
+
+import static com.sun.tools.doclint.Entity.nu;
 
 /**
  * @author LeanderK
@@ -21,6 +24,28 @@ public class ExampleJava {
         this.test2 = new LinkedList<>();
         test2();
         System.out.println(list);
+        for (String test : list) {
+            System.out.println(test);
+        }
+
+        list.forEach(System.out::println);
+
+        list.stream()
+                .forEach(test -> {
+                    System.out.println(test);
+                });
+
+        Function<String, String> whaat = s -> s;
+        Arrays.sort(new String[]{"a", "b"});
+        this.test2.add("");
+
+        if (list != null) {
+            System.out.println(list);
+        } else if (list != null) {
+            System.out.println(list);
+        } else {
+            System.out.println(list);
+        }
     }
 
     public void test2() {

@@ -1,16 +1,16 @@
 package xyz.exemplator.exemplator.parser.java;
 
+import com.github.javaparser.Position;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.*;
-import com.github.javaparser.ast.stmt.BlockStmt;
-import com.github.javaparser.ast.stmt.ExpressionStmt;
-import com.github.javaparser.ast.stmt.Statement;
+import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.PrimitiveType;
 import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.ast.type.Type;
+import xyz.exemplator.exemplator.parser.Selection;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -18,7 +18,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static javafx.scene.input.KeyCode.M;
+import static com.sun.tools.doclint.Entity.bull;
+import static com.sun.tools.doclint.Entity.le;
+import static com.sun.tools.doclint.Entity.nu;
 
 /**
  * @author LeanderK
@@ -41,61 +43,66 @@ public class UsageFinder {
         this.identifierOnly = identifierOnly;
     }
 
-    private List<Integer> checkTypeForUsages() {
+    private List<Selection> checkTypeForUsages() {
         boolean identifierOnlyEnabled = command.getIdentifierOnlyValid().test(type, identifierOnly);
-        Set<LeftQualifier> fieldQualifiers;
+        Set<LeftQualifier> fieldQualifiers = new HashSet<>();
+        List<Selection> usages = new ArrayList<>();
         if (command.getClassName().isPresent()) {
-            fieldQualifiers = type.getChildrenNodes().stream()
-                    .filter(node -> node instanceof FieldDeclaration)
-                    .map(node -> (FieldDeclaration) node)
-                    .flatMap(field ->
-                            getValidFieldDeclarations(
-                                    field,
-                                    command.getClassName().get(),
-                                    command.getPackageName().orElse(null)
-                            ).stream()
-                    )
-                    .collect(Collectors.toSet());
-        } else {
-            fieldQualifiers = new HashSet<>();
+            for (Node node : type.getChildrenNodes()) {
+                if (node instanceof FieldDeclaration) {
+                    FieldDeclaration field = (FieldDeclaration) node;
+                    usages.addAll(handleArgs(field.getVariables(), fieldQualifiers, new HashSet<>(), identifierOnlyEnabled));
+
+                    fieldQualifiers.addAll(getValidFieldDeclarations(field,
+                                    command.getClassName().get(), command.getPackageName().orElse(null)));
+                }
+            }
         }
-        return type.getChildrenNodes().stream()
+        List<Selection> selections = type.getChildrenNodes().stream()
                 .filter(node -> node instanceof MethodDeclaration)
                 .map(node -> (MethodDeclaration) node)
                 .flatMap(node -> getUsages(node, fieldQualifiers, identifierOnlyEnabled).stream())
                 .collect(Collectors.toList());
+        usages.addAll(selections);
+        return usages;
     }
 
-    private List<Integer> getUsages(MethodDeclaration method, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
+    private List<Selection> getUsages(MethodDeclaration method, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
         method.getChildrenNodes().stream()
                 .filter(node -> node instanceof BlockStmt)
                 .map(node -> (BlockStmt) node)
-                .flatMap(node -> getUsagesForMethod(node, fieldQualifiers, identifierOnlyEnabled).stream());
+                .flatMap(node -> getUsagesForBlock(node, fieldQualifiers, identifierOnlyEnabled, new HashSet<>()).stream());
         return new ArrayList<>();
     }
 
-    private List<Integer> getUsagesForMethod(BlockStmt stmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
-        Set<LeftQualifier> localVars = new HashSet<>();
+    private List<Selection> getUsagesForBlock(BlockStmt stmt, Set<LeftQualifier> fieldQualifiers,
+                                              boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars) {
+        return getUsagesForBlock(stmt, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, new HashSet<>(), new HashSet<>());
+    }
+
+    private List<Selection> getUsagesForBlock(BlockStmt stmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars,  Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
+        List<Selection> usages = new ArrayList<>();
         for (Statement statement : stmt.getStmts()) {
             if (statement instanceof ExpressionStmt) {
                 Expression expression = ((ExpressionStmt) statement).getExpression();
                 if (expression instanceof VariableDeclarationExpr) {
+                    VariableDeclarationExpr declr = (VariableDeclarationExpr) expression;
+                    usages.addAll(handleArgs(declr.getVars(), localVars, fieldQualifiers, identifierOnlyEnabled));
                     if (!command.getClassName().isPresent()) {
                         continue;
                     }
                     String classname = command.getClassName().get();
-                    VariableDeclarationExpr declr = (VariableDeclarationExpr) expression;
                     Type type = declr.getType();
                     boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+
                     declr.getVars().stream()
                             .map(var -> var.getId().toString())
                             .map(id -> new LeftQualifier(valid, id))
-                            .filter(qual -> fieldQualifiers.contains(qual) || localVars.contains(qual))
                             .forEach(qual -> {
-                                if (qual.isSameType() && localVars.contains(qual)) {
-                                    localVars.remove(qual);
-                                } else {
+                                if (qual.isSameType()) {
                                     localVars.add(qual);
+                                } else if (fieldQualifiers.contains(qual)) {
+                                    localVarsBlocking.add(qual);
                                 }
                             });
                 } else if (expression instanceof AssignExpr) {
@@ -109,16 +116,167 @@ public class UsageFinder {
                         NameExpr nameExpr = (NameExpr) target;
                         LeftQualifier leftQualifier = new LeftQualifier(false, nameExpr.getName());
                         if (fieldQualifiers.contains(leftQualifier) || localVars.contains(leftQualifier)) {
-                            ((AssignExpr) expression).getTarget()
-                            boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported)
+                            Expression value = declr.getValue();
+                            if (value instanceof ObjectCreationExpr) {
+                                ObjectCreationExpr creationExpr = (ObjectCreationExpr) value;
+                                ClassOrInterfaceType type = creationExpr.getType();
+                                boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+                                if (!valid) {
+                                    if (fieldQualifiers.contains(leftQualifier)) {
+                                        fieldQualifiers.remove(leftQualifier);
+                                    } else if (localVars.contains(leftQualifier)) {
+                                        localVars.remove(leftQualifier);
+                                    }
+                                }
+                            }
                         }
                     } else if (target instanceof FieldAccessExpr) {
                         FieldAccessExpr accessExpr = (FieldAccessExpr) target;
+                        Expression scope = accessExpr.getScope();
+                        if (scope instanceof ThisExpr) {
+                            ThisExpr thisExpr = (ThisExpr) scope;
+                            Expression value = declr.getValue();
+                            if (value instanceof ObjectCreationExpr) {
+                                LeftQualifier leftQualifier = new LeftQualifier(false, accessExpr.getField());
+                                ObjectCreationExpr creationExpr = (ObjectCreationExpr) value;
+                                ClassOrInterfaceType type = creationExpr.getType();
+                                boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+                                if (!valid) {
+                                    if (fieldQualifiers.contains(leftQualifier)) {
+                                        fieldQualifiers.remove(leftQualifier);
+                                    }
+                                }
+                            }
+                        }
                     }
+                } else if (expression instanceof MethodCallExpr) {
+                    MethodCallExpr methodCallExpr = (MethodCallExpr) expression;
+                    boolean sameType = true;
+                    if (command.getClassName().isPresent()) {
+                        Expression scope = methodCallExpr.getScope();
+                        if (scope != null && scope instanceof NameExpr) {
+                            NameExpr nameExpr = (NameExpr) scope;
+                            String name = nameExpr.getName();
+                            sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                                    localVarsBlocking, name);
+                        } else if (scope != null && scope instanceof FieldAccessExpr) {
+                            FieldAccessExpr fieldAccessExpr = (FieldAccessExpr) scope;
+                            Expression fieldScope = fieldAccessExpr.getScope();
+                            if (fieldScope)
+                            sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                                    localVarsBlocking, name);
+                        } else {
+                            if (!identifierOnlyEnabled && command.getClassName().isPresent()) {
+                                sameType = false;
+                            }
+                        }
+                    }
+                    if (!sameType) {
+                        continue;
+                    }
+                    boolean classnameActive = command.getClassName().isPresent();
+                    boolean methodActive = command.getMethodName().isPresent();
+                    Boolean matches = command.getMethodName().map(method -> methodCallExpr.getName().equals(method))
+                            .orElse(true);
+                    boolean validUsage = false;
+                    if (classnameActive && !methodActive) {
+                        validUsage = true;
+                    } else if (methodActive && matches) {
+                        validUsage = true;
+                    }
+                    if (validUsage) {
+                        usages.add(getSelection(methodCallExpr));
+                    }
+                }
+            } else if (statement instanceof ForeachStmt) {
+                ForeachStmt foreachStmt = (ForeachStmt) statement;
+                Statement body = foreachStmt.getBody();
+                if (body != null && body instanceof BlockStmt) {
+                    usages.addAll(getUsagesForBlock((BlockStmt) body, fieldQualifiers, identifierOnlyEnabled,
+                            inheritedLocalVars, localVars, localVarsBlocking));
+                }
+            } else if (statement instanceof IfStmt) {
+                usages.addAll(getSelectionsFromIf((IfStmt) statement, fieldQualifiers, identifierOnlyEnabled,
+                        inheritedLocalVars, localVars, localVarsBlocking));
+            }
+        }
+        return usages;
+    }
+
+    private boolean isClassApplicableForMethodCall(Set<LeftQualifier> fieldQualifiers, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, String name) {
+        LeftQualifier leftQualifier = new LeftQualifier(true, name);
+        if (!localVars.contains(leftQualifier) && !inheritedLocalVars.contains(leftQualifier)) {
+            if (!fieldQualifiers.contains(leftQualifier) || localVarsBlocking.contains(leftQualifier)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private List<Selection> getSelectionsFromIf(IfStmt ifStmt, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars,  Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
+        Statement thenStmt = ifStmt.getThenStmt();
+        if (thenStmt instanceof BlockStmt) {
+            return getUsagesForBlock((BlockStmt) thenStmt, fieldQualifiers, identifierOnlyEnabled,
+                    inheritedLocalVars, localVars, localVarsBlocking);
+        }
+        Statement elseStmt = ifStmt.getElseStmt();
+        if (elseStmt instanceof BlockStmt) {
+            return getUsagesForBlock((BlockStmt) elseStmt, fieldQualifiers, identifierOnlyEnabled,
+                    inheritedLocalVars, localVars, localVarsBlocking);
+        } else if (elseStmt instanceof IfStmt) {
+            return getSelectionsFromIf(ifStmt, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+        }
+        return new ArrayList<>();
+    }
+
+    private List<Selection> handleArgs(List<VariableDeclarator> variables, Set<LeftQualifier> localVars, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
+        return variables.stream()
+                .map(VariableDeclarator::getInit)
+                .filter(init -> init != null && init instanceof LambdaExpr)
+                .flatMap(expr -> handleMaybeLambda(expr, fieldQualifiers, identifierOnlyEnabled, imported, localVars).stream())
+                .collect(Collectors.toList());
+    }
+
+    private List<Selection> handleMaybeLambda(Expression expression, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled,
+                                             boolean imported, Set<LeftQualifier> localVars) {
+        if (expression instanceof LambdaExpr) {
+            LambdaExpr lambda = (LambdaExpr) expression;
+            Statement body = lambda.getBody();
+            if (body instanceof BlockStmt) {
+                return getUsagesForBlock((BlockStmt) body, fieldQualifiers, identifierOnlyEnabled, localVars);
+            }
+        } else if (expression instanceof MethodReferenceExpr) {
+            MethodReferenceExpr method = (MethodReferenceExpr) expression;
+            Expression type = method.getScope();
+            if (type instanceof TypeExpr) {
+                TypeExpr typeExpr = (TypeExpr) type;
+                Type realType = typeExpr.getType();
+                Boolean classMatches = command.getClassName()
+                        .map(className -> checkType(realType, className, command.getPackageName().orElse(null), imported))
+                        .orElse(true);
+                boolean isMatch = false;
+                if (classMatches) {
+                    if (command.getMethodName().isPresent()) {
+                        isMatch = method.getIdentifier().equals(command.getMethodName().get());
+                    } else {
+                        isMatch = true;
+                    }
+                }
+
+                if (isMatch) {
+                    List<Selection> selections = new ArrayList<>();
+                    selections.add(getSelection(method));
+                    return selections;
                 }
             }
         }
-        return null;
+        return new ArrayList<>();
+    }
+
+    private Selection getSelection(Node node) {
+        Position begin = new Position(node.getBeginLine(), node.getBeginColumn());
+        Position end = new Position(node.getEndLine(), node.getEndColumn());
+        return new Selection(begin, end);
     }
 
     private Set<LeftQualifier> getValidFieldDeclarations(FieldDeclaration fieldDeclaration, String className, String packageName) {
