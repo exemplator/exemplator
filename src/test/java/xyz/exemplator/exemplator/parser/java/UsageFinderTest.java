@@ -19,12 +19,12 @@ import static org.junit.Assert.*;
 public class UsageFinderTest {
     @Test
     public void test() throws Exception {
-        InputStream resourceAsStream = new FileInputStream("./src/test/java/xyz/exemplator/exemplator/parser/ExampleJava.java");
-        CompilationUnit cu = com.github.javaparser.JavaParser.parse(resourceAsStream);
-        TypeDeclaration typeDeclaration = cu.getTypes().get(0);
-        Command command = new Command("InputStream", "java.io", "read");
-        JavaParser javaParser = new JavaParser(cu);
-        List<Selection> matches = javaParser.getMatches(command);
-        System.out.println(matches);
+//        InputStream resourceAsStream = new FileInputStream("./src/test/java/xyz/exemplator/exemplator/parser/ExampleJava.java");
+//        CompilationUnit cu = com.github.javaparser.JavaParser.parse(resourceAsStream);
+//        TypeDeclaration typeDeclaration = cu.getTypes().get(0);
+//        //Command command = new Command((typeDeclaration1, aBoolean) -> false, "List", "java.util", null);
+//        UsageFinder usageFinder = new UsageFinder(cu, typeDeclaration, command, true, false, new ArrayList<>());
+//        List<Selection> selections = usageFinder.checkTypeForUsages();
+//        System.out.println(selections);
     }
 }
