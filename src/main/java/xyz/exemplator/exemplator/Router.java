@@ -46,7 +46,7 @@ public class Router {
                             ctx.getResponse().getHeaders().add("access-control-allow-origin", "*");
                             ctx.getResponse().getHeaders().add("access-control-allow-methods", "GET,PUT,POST,PATCH,DELETE,OPTIONS");
                             ctx.getResponse().getHeaders().add("access-control-allow-credentials", "true");
-                            ctx.getResponse().getHeaders().add("access-control-allow-headers", "Authorization,Content-Type");
+                            ctx.getResponse().getHeaders().add("access-control-allow-headers", "Content-Type,Access-Control-Allow-Headers,Authorization,X-Requested-With");
                             ctx.getResponse().getHeaders().add("access-control-expose-headers", "Link,Location");
                             ctx.getResponse().getHeaders().add("access-control-max-age", "86400");
                             ctx.next();
