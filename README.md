@@ -8,6 +8,6 @@ The idea is to have a tool that quickly explains how APIs are used through examp
 
 
 ### How does it work?
-1. Exemplator takes the given code and its type (e.g. the method "close" from "java.io.InputStream") and searches GitHub for Java files that include the code and the type. Then it sorts all results by popularity and passes it on to the parser.
+1. Exemplator takes the given code and its type (e.g. the method ```"close"``` from ```"java.io.InputStream"```) and searches GitHub for Java files that include the code and the type. Then it sorts all results by popularity and passes it on to the parser.
 
-2. The parser parses each returned file to build an AST. The AST is used to determine whether the code is actually of the type that was given or whether the code is of some other type (e.g. the method "close" could also belong to "java.util.Scanner"). Only examples of the correct type are kept and returned to the user. 
+2. The parser parses each returned file to build an AST. The AST is used to determine whether the code is actually of the type that was given or whether the code is of some other type (e.g. the method ```"close"``` could also belong to ```"java.util.Scanner"```). Only examples of the correct type are kept and returned to the user. 
