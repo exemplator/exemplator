@@ -1,6 +1,7 @@
 package xyz.exemplator.exemplator.parser.java;
 
 import com.github.javaparser.ParseException;
+import com.github.javaparser.TokenMgrError;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.body.TypeDeclaration;
@@ -36,7 +37,7 @@ public class JavaParser implements Parser {
         try {
             // parse the file
             cu = com.github.javaparser.JavaParser.parse(inputStream);
-        } catch (ParseException e) {
+        } catch (ParseException | TokenMgrError e) {
             logger.error("Unable to parse input", e);
             return Optional.empty();
         } finally {
