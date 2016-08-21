@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class CodeSample implements Comparable<CodeSample> {
     private String rawUrl;
@@ -96,8 +98,39 @@ public class CodeSample implements Comparable<CodeSample> {
         return selections;
     }
 
+    public List<String> splitCode() {
+        String[] array = codeSnippet.split("\\n");
+
+        return selections.stream().map(selection -> {
+            String result = "";
+            int startRow = selection.getStart().getLine();
+            int endRow = selection.getEnd().getLine();
+            for (int i = 0; i < array.length; i++) {
+                if (i >= startRow - 10 && i <= endRow + 10) {
+                    result += array[i] + "\n";
+                }
+            }
+
+            return result;
+        }).collect(Collectors.toList());
+    }
+
     @Override
     public int compareTo(CodeSample o) {
         return o.getStars() - stars;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof CodeSample) {
+            CodeSample codeSample = (CodeSample) obj;
+
+            List<String> codeSnippets2 = codeSample.splitCode();
+            return splitCode().stream()
+                    .filter(codeSnippets2::contains)
+                    .collect(Collectors.toList()).size() == 0;
+        }
+
+        return false;
     }
 }

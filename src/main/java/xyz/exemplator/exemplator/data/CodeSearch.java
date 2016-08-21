@@ -43,7 +43,7 @@ public class CodeSearch implements ICodeSearch {
             throw new HttpException("Unable to query url: " + url);
         }
 
-        // Get raw code from github
+        // Get raw code from GitHub
         List<CodeSample> codeSamples = new ArrayList<>();
         codeSamplesJson.entrySet().stream()
                 .forEach(entry -> codeSamples.add(entry.getValue()));
@@ -78,7 +78,7 @@ public class CodeSearch implements ICodeSearch {
         JSONParser parser = new JSONParser();
 
         if (response == null) {
-            // Not supported by github
+            // Not supported by GitHub
             codeSample.setStars(-1);
             return Optional.of(codeSample);
         }
@@ -107,7 +107,7 @@ public class CodeSearch implements ICodeSearch {
             logger.error("Unable to parse json", e);
         }
 
-        // Not supported by gitub
+        // Not supported by GitHub
         codeSample.setStars(-1);
         return Optional.of(codeSample);
     }
