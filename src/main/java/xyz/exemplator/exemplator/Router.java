@@ -121,7 +121,7 @@ public class Router {
         Set<CodeSample> resultSet = new HashSet<>(results);
         currentResults.addAll(resultSet);
 
-        if (results.size() >= 10) {
+        if (currentResults.size() >= 10) {
             return new ArrayList<>(currentResults);
         } else if (currentPage <= startPage + 5) {
             getOptionalResults(request, searchTerms, command)
