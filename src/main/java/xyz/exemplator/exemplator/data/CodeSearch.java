@@ -50,8 +50,9 @@ public class CodeSearch implements ICodeSearch {
 
         return codeSamples.stream().map(codeSample -> {
             CompletableFuture<Optional<CodeSample>> futureCode = CompletableFuture.supplyAsync(() -> fetchRawCode(codeSample), executorService);
-            CompletableFuture<Optional<CodeSample>> futureGit = CompletableFuture.supplyAsync(() -> fetchGithubRating(codeSample), executorService);
-            return CompletableFuture.allOf(futureCode, futureGit).thenApply(v -> futureCode.join().flatMap(ignore -> futureGit.join()));
+            //CompletableFuture<Optional<CodeSample>> futureGit = CompletableFuture.supplyAsync(() -> fetchGithubRating(codeSample), executorService);
+            //return CompletableFuture.allOf(futureCode, futureGit).thenApply(v -> futureCode.join().flatMap(ignore -> futureGit.join()));
+            return CompletableFuture.allOf(futureCode).thenApply(v -> futureCode.join());
         }).collect(Collectors.toList());
     }
 
