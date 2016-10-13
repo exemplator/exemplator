@@ -1,12 +1,8 @@
 package xyz.exemplator.exemplator;
 
 import com.github.javaparser.Position;
-import com.sun.tools.internal.ws.processor.model.Block;
 import org.apache.http.HttpException;
-import ratpack.exec.Blocking;
 import ratpack.exec.Promise;
-import ratpack.func.Function;
-import ratpack.jackson.Jackson;
 import ratpack.server.RatpackServer;
 import ratpack.server.ServerConfig;
 import xyz.exemplator.exemplator.data.CodeSample;
@@ -22,7 +18,6 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.sun.tools.javac.jvm.ByteCodes.ret;
 import static java.util.stream.Collectors.toList;
 import static ratpack.jackson.Jackson.fromJson;
 
@@ -80,7 +75,7 @@ public class Router {
                                                     List<Response.Occurrence> occurrences = resultAndPage.samples.stream()
                                                             .map(this::createOccurence)
                                                             .collect(toList());
-                                                    return new Response(occurrences, resultAndPage.page);
+                                                    return new Response(occurrences, resultAndPage.startPage, resultAndPage.endPage);
                                                 });
                                     }));
                         })
@@ -102,14 +97,14 @@ public class Router {
                                             return resultAndPage;
                                         } else {
                                             resultAndPage.samples.addAll(results);
-                                            return new ResultAndPage(resultAndPage.samples, requestPage);
+                                            return new ResultAndPage(resultAndPage.samples, requestPage, resultAndPage.endPage);
                                         }
                                     });
                         } catch (HttpException e) {
                             throw new RuntimeException(e);
                         }
                     } else {
-                        return CompletableFuture.completedFuture(new ResultAndPage(results, requestPage));
+                        return CompletableFuture.completedFuture(new ResultAndPage(results, requestPage, requestPage));
                     }
                 });
     }
@@ -160,11 +155,13 @@ public class Router {
 
     private static class ResultAndPage {
         List<CodeSample> samples;
-        int page;
+        int startPage;
+        int endPage;
 
-        public ResultAndPage(List<CodeSample> samples, int page) {
+        public ResultAndPage(List<CodeSample> samples, int startPage, int endPage) {
             this.samples = samples;
-            this.page = page;
+            this.startPage = startPage;
+            this.endPage = endPage;
         }
     }
 }

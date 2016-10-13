@@ -8,11 +8,13 @@ import java.util.List;
  */
 public class Response {
     List<Occurrence> occurrences;
-    int page;
+    int startPage;
+    int endPage;
 
-    public Response(List<Occurrence> occurrences, int page) {
+    public Response(List<Occurrence> occurrences, int startPage, int endPage) {
         this.occurrences = occurrences;
-        this.page = page;
+        this.startPage = startPage;
+        this.endPage = endPage;
     }
 
     public List<Occurrence> getOccurrences() {
