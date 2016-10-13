@@ -8,9 +8,11 @@ import java.util.List;
  */
 public class Response {
     List<Occurrence> occurrences;
+    int page;
 
-    public Response(List<Occurrence> occurrences) {
+    public Response(List<Occurrence> occurrences, int page) {
         this.occurrences = occurrences;
+        this.page = page;
     }
 
     public List<Occurrence> getOccurrences() {
