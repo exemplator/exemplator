@@ -3,6 +3,7 @@ package xyz.exemplator.exemplator;
 import com.github.javaparser.Position;
 import org.apache.http.HttpException;
 import ratpack.exec.Promise;
+import ratpack.jackson.Jackson;
 import ratpack.server.RatpackServer;
 import ratpack.server.ServerConfig;
 import xyz.exemplator.exemplator.data.CodeSample;
@@ -76,7 +77,8 @@ public class Router {
                                                             .map(this::createOccurence)
                                                             .collect(toList());
                                                     return new Response(occurrences, resultAndPage.startPage, resultAndPage.endPage);
-                                                });
+                                                })
+                                                .map(Jackson::json);
                                     }));
                         })
                 )
