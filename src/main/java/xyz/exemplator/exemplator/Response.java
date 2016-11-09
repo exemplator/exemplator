@@ -7,14 +7,22 @@ import java.util.List;
  * @version 1.0
  */
 public class Response {
-    List<Occurrence> occurrences;
     int startPage;
     int endPage;
+    List<Occurrence> occurrences;
 
     public Response(List<Occurrence> occurrences, int startPage, int endPage) {
         this.occurrences = occurrences;
         this.startPage = startPage;
         this.endPage = endPage;
+    }
+
+    public int getStartPage() {
+        return startPage;
+    }
+
+    public int getEndPage() {
+        return endPage;
     }
 
     public List<Occurrence> getOccurrences() {

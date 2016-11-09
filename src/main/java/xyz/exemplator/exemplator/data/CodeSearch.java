@@ -107,7 +107,7 @@ public class CodeSearch implements ICodeSearch {
             logger.error("Unable to parse json", e);
         }
 
-        // Not supported by gitub
+        // Not supported by github
         codeSample.setStars(-1);
         return Optional.of(codeSample);
     }

@@ -16,9 +16,21 @@ public class Command {
     private final String methodName;
 
     public Command(String className, String packageName, String methodName) {
-        this.className = className;
-        this.packageName = packageName;
-        this.methodName = methodName;
+        if (className != null) {
+            this.className = className.trim();
+        } else {
+            this.className = null;
+        }
+        if (packageName != null) {
+            this.packageName = packageName.trim();
+        } else {
+            this.packageName = null;
+        }
+        if (methodName != null) {
+                this.methodName = methodName.trim();
+        } else {
+            this.methodName = null;
+        }
     }
 
     public Optional<String> getClassName() {
