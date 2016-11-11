@@ -157,7 +157,7 @@ public class Router {
                 })
                 .collect(Collectors.toList());
 
-        return new Response.Occurrence(codeSample.getRawUrl(), codeSample.getUserUrl(), codeSample.getCode(), selections);
+        return new Response.Occurrence(codeSample.getFileUrl(), codeSample.getUserUrl(), codeSample.getCode(), selections);
     }
 
     private static class ResultAndPage {

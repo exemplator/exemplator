@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 public class CodeSample implements Comparable<CodeSample> {
     private String rawUrl;
     private String userUrl;
+    private String fileUrl;
     private int stars = 0;
     private InputStream codeInputStream;
     private String codeSnippet;
@@ -82,6 +83,14 @@ public class CodeSample implements Comparable<CodeSample> {
 
     public void setRawUrl(String rawUrl) {
         this.rawUrl = rawUrl;
+    }
+
+    public String getFileUrl() {
+        return fileUrl;
+    }
+
+    public void setFileUrl(String fileUrl) {
+        this.fileUrl = fileUrl;
     }
 
     public String getUserUrl() {

@@ -20,6 +20,7 @@ class JavaCodeRater {
     private static String LANG_JAVA = "java";
     private static String GITHUB_REPO_URL = "https://api.github.com/search/repositories?q=";
     private static String GITHUB_RAW_URL = "https://raw.githubusercontent.com/";
+    private static String GITHUB_URL = "https://github.com/";
 
     CodeSample rateJavaCodeSample(JSONObject codeSample) {
         String language = (String) codeSample.get("language");
@@ -49,12 +50,14 @@ class JavaCodeRater {
         String repo = gitData[4];
 
         String rawURL = GITHUB_RAW_URL + user + "/" + repo + "/master" + location + "/" + filename;
+        String fileURL = GITHUB_URL + user + "/" + repo + "/blob/master" + location + "/" + filename;
 
         //CodeSample codeSampleObj = getGitRepoStars(user, repo);
         CodeSample codeSampleObj = new CodeSample(user, repo);
 
         codeSampleObj.setUserUrl(gitRepo);
         codeSampleObj.setRawUrl(rawURL);
+        codeSampleObj.setFileUrl(fileURL);
         return codeSampleObj;
     }
 }
