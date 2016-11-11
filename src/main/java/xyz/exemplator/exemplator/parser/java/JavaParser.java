@@ -27,14 +27,12 @@ import java.util.stream.Collectors;
 public class JavaParser implements Parser {
     private static final Logger logger = LoggerFactory.getLogger(JavaParser.class);
     private final CompilationUnit cu;
-    private static InputStream is;
 
     public JavaParser(CompilationUnit cu) {
         this.cu = cu;
     }
 
     public static Optional<Parser> of(InputStream inputStream) {
-        is = inputStream;
         CompilationUnit cu;
         try {
             // parse the file

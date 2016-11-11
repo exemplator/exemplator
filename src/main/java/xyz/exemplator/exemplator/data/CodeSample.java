@@ -6,7 +6,11 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class CodeSample implements Comparable<CodeSample> {
     private String rawUrl;
@@ -94,6 +98,23 @@ public class CodeSample implements Comparable<CodeSample> {
 
     public List<Selection> getSelections() {
         return selections;
+    }
+
+    public Map<Selection, String> getSurroundings() {
+        String[] split = codeSnippet.split("\\n");
+
+        return selections.stream()
+                .collect(Collectors.toMap(Function.identity(), selection -> {
+                    int start = (selection.getStart().getLine() - 1) - 10;
+                    int end = (selection.getEnd().getLine() - 1) + 10;
+
+                    StringBuilder builder = new StringBuilder();
+                    for (int i = start; i <= end; i++) {
+                        builder.append(split[i]);
+                        builder.append("\n");
+                    }
+                    return builder.toString();
+                }));
     }
 
     @Override

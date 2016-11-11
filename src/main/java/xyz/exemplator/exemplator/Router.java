@@ -87,13 +87,13 @@ public class Router {
 
     public CompletableFuture<ResultAndPage> handleSearchRequest(
             List<String> searchTerms, int requestPage, ExecutorService executorService,
-            Command command, Request request, int accumulator, Set<String> selections, int recursion) throws HttpException {
-        return doCodeSearch(searchTerms, requestPage, executorService, command, request, selections)
+            Command command, Request request, int accumulator, Set<Integer> selectionHashes, int recursion) throws HttpException {
+        return doCodeSearch(searchTerms, requestPage, executorService, command, request, selectionHashes)
                 .thenCompose((List<CodeSample> results) -> {
                     int newAccumulator = accumulator + results.size();
                     if (newAccumulator < 10 && recursion <= 10) {
                         try {
-                            return handleSearchRequest(searchTerms, requestPage + 1, executorService, command, request, newAccumulator, selections, recursion + 1)
+                            return handleSearchRequest(searchTerms, requestPage + 1, executorService, command, request, newAccumulator, selectionHashes, recursion + 1)
                                     .<ResultAndPage>thenApply(resultAndPage -> {
                                         if (results.isEmpty()) {
                                             return resultAndPage;
@@ -112,7 +112,7 @@ public class Router {
     }
 
     public CompletableFuture<List<CodeSample>> doCodeSearch(List<String> searchTerms, int requestPage, ExecutorService executorService,
-                                                            Command command, Request request, Set<String> selections) throws HttpException {
+                                                            Command command, Request request, Set<Integer> selectionHashes) throws HttpException {
         List<CompletableFuture<Optional<CodeSample>>> search = codeSearch.fetch(searchTerms, requestPage, executorService);
         CompletableFuture[] completableFutures = (CompletableFuture[]) search.stream()
                 .toArray(size -> new CompletableFuture[size]);
@@ -124,7 +124,12 @@ public class Router {
                         .filter(Optional::isPresent)
                         .map(Optional::get)
                         .filter(codeSample -> !codeSample.getSelections().isEmpty())
-                        .filter(codeSample -> selections.add(codeSample.getCode()))
+                        .filter(codeSample -> {
+                            Map<Selection, String> surroundings = codeSample.getSurroundings();
+                            //only first selection gets shown
+                            int hashCode = surroundings.get(codeSample.getSelections().get(0)).hashCode();
+                            return selectionHashes.add(hashCode);
+                        })
                         .collect(Collectors.toList())
         );
     }
