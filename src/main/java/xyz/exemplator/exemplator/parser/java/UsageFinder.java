@@ -12,11 +12,10 @@ import com.github.javaparser.ast.type.ReferenceType;
 import com.github.javaparser.ast.type.Type;
 import xyz.exemplator.exemplator.parser.Selection;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 /**
  * @author LeanderK
@@ -50,7 +49,7 @@ public class UsageFinder {
             for (Node node : type.getChildrenNodes()) {
                 if (node instanceof FieldDeclaration) {
                     FieldDeclaration field = (FieldDeclaration) node;
-                    usages.addAll(handleArgs(field.getVariables(), fieldQualifiers, new HashSet<>(), identifierOnlyEnabled));
+                    usages.addAll(handleArgs(field.getVariables(), fieldQualifiers, new HashSet<>(), identifierOnlyEnabled, new HashSet<>(), new HashSet<>()));
 
                     fieldQualifiers.addAll(getValidFieldDeclarations(field,
                                     command.getClassName().get(), command.getPackageName().orElse(null)));
@@ -97,7 +96,7 @@ public class UsageFinder {
             if (statement instanceof ExpressionStmt) {
                 Expression expression = ((ExpressionStmt) statement).getExpression();
                 if (expression instanceof VariableDeclarationExpr) {
-                    handleVariableDeclarationExpr(fieldQualifiers, identifierOnlyEnabled, localVars, localVarsBlocking, usages, (VariableDeclarationExpr) expression);
+                    handleVariableDeclarationExpr(fieldQualifiers, identifierOnlyEnabled, localVars, localVarsBlocking, usages, inheritedLocalVars, (VariableDeclarationExpr) expression);
                     continue;
                 } else if (expression instanceof AssignExpr) {
                     if (!command.getClassName().isPresent()) {
@@ -144,58 +143,9 @@ public class UsageFinder {
                         }
                     }
                 } else if (expression instanceof MethodCallExpr) {
-                    MethodCallExpr methodCallExpr = (MethodCallExpr) expression;
-                    boolean sameType = true;
-                    if (command.getClassName().isPresent()) {
-                        Expression scope = methodCallExpr.getScope();
-                        if (scope != null && scope instanceof NameExpr) {
-                            NameExpr nameExpr = (NameExpr) scope;
-                            String name = nameExpr.getName();
-                            sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
-                                    localVarsBlocking, name);
-                        } else if (scope != null && scope instanceof FieldAccessExpr) {
-                            FieldAccessExpr fieldAccessExpr = (FieldAccessExpr) scope;
-                            Expression fieldScope = fieldAccessExpr.getScope();
-                            String field = fieldAccessExpr.getField();
-                            if (fieldScope instanceof ThisExpr) {
-                                sameType = isClassApplicableForMethodCall(fieldQualifiers, new HashSet<>(), new HashSet<>(),
-                                        localVarsBlocking, field);
-                            } else if (fieldScope instanceof FieldAccessExpr) {
-                                Boolean packageMatches = command.getPackageName()
-                                        .map(packageName -> packageName.equals(fieldScope.toString()))
-                                        .orElse(true);
-                                if (packageMatches) {
-                                    sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
-                                            localVarsBlocking, field);
-                                } else {
-                                    sameType = false;
-                                }
-                            } else {
-                                sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
-                                        localVarsBlocking, field);
-                            }
-                        } else {
-                            if (!identifierOnlyEnabled && command.getClassName().isPresent()) {
-                                sameType = false;
-                            }
-                        }
-                    }
-                    if (!sameType) {
-                        continue;
-                    }
-                    boolean classnameActive = command.getClassName().isPresent();
-                    boolean methodActive = command.getMethodName().isPresent();
-                    Boolean matches = command.getMethodName().map(method -> methodCallExpr.getName().equals(method))
-                            .orElse(true);
-                    boolean validUsage = false;
-                    if (classnameActive && !methodActive) {
-                        validUsage = true;
-                    } else if (methodActive && matches) {
-                        validUsage = true;
-                    }
-                    if (validUsage) {
-                        usages.add(getSelection(methodCallExpr));
-                    }
+                    Optional<Selection> optional = handleMethodCallExpr((MethodCallExpr) expression, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+                    optional.ifPresent(usages::add);
+                    continue;
                 }
             } else if (statement instanceof ForeachStmt) {
                 ForeachStmt foreachStmt = (ForeachStmt) statement;
@@ -214,7 +164,7 @@ public class UsageFinder {
                 newParent.addAll(localVars);
                 HashSet<LeftQualifier> local = new HashSet<>();
                 tryStmt.getResources()
-                        .forEach(declr -> handleVariableDeclarationExpr(newParent, identifierOnlyEnabled, local, localVarsBlocking, usages, declr));
+                        .forEach(declr -> handleVariableDeclarationExpr(newParent, identifierOnlyEnabled, local, localVarsBlocking, usages, inheritedLocalVars, declr));
                 BlockStmt tryBlock = tryStmt.getTryBlock();
                 if (tryBlock != null) {
                     usages.addAll(getUsagesForBlock(tryBlock, fieldQualifiers, identifierOnlyEnabled, localVars, local, localVarsBlocking));
@@ -233,10 +183,67 @@ public class UsageFinder {
         return usages;
     }
 
+    private Optional<Selection> handleMethodCallExpr(MethodCallExpr expression, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
+        MethodCallExpr methodCallExpr = expression;
+        boolean sameType = true;
+        if (command.getClassName().isPresent()) {
+            Expression scope = methodCallExpr.getScope();
+            if (scope != null && scope instanceof NameExpr) {
+                NameExpr nameExpr = (NameExpr) scope;
+                String name = nameExpr.getName();
+                sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                        localVarsBlocking, name);
+            } else if (scope != null && scope instanceof FieldAccessExpr) {
+                FieldAccessExpr fieldAccessExpr = (FieldAccessExpr) scope;
+                Expression fieldScope = fieldAccessExpr.getScope();
+                String field = fieldAccessExpr.getField();
+                if (fieldScope instanceof ThisExpr) {
+                    sameType = isClassApplicableForMethodCall(fieldQualifiers, new HashSet<>(), new HashSet<>(),
+                            localVarsBlocking, field);
+                } else if (fieldScope instanceof FieldAccessExpr) {
+                    Boolean packageMatches = command.getPackageName()
+                            .map(packageName -> packageName.equals(fieldScope.toString()))
+                            .orElse(true);
+                    if (packageMatches) {
+                        sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                                localVarsBlocking, field);
+                    } else {
+                        sameType = false;
+                    }
+                } else {
+                    sameType = isClassApplicableForMethodCall(fieldQualifiers, inheritedLocalVars, localVars,
+                            localVarsBlocking, field);
+                }
+            } else {
+                if (!identifierOnlyEnabled && command.getClassName().isPresent()) {
+                    sameType = false;
+                }
+            }
+        }
+        if (!sameType) {
+            return Optional.empty();
+        }
+        boolean classnameActive = command.getClassName().isPresent();
+        boolean methodActive = command.getMethodName().isPresent();
+        Boolean matches = command.getMethodName().map(method -> methodCallExpr.getName().equals(method))
+                .orElse(true);
+        boolean validUsage = false;
+        if (classnameActive && !methodActive) {
+            validUsage = true;
+        } else if (methodActive && matches) {
+            validUsage = true;
+        }
+        if (validUsage) {
+            return Optional.of(getSelection(methodCallExpr));
+        } else {
+            return Optional.empty();
+        }
+    }
+
     private void handleVariableDeclarationExpr(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled,
-                                               Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, VariableDeclarationExpr expression) {
+                                               Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, Set<LeftQualifier> inheritedLocalVars, VariableDeclarationExpr expression) {
         VariableDeclarationExpr declr = expression;
-        usages.addAll(handleArgs(declr.getVars(), localVars, fieldQualifiers, identifierOnlyEnabled));
+        usages.addAll(handleArgs(declr.getVars(), localVars, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVarsBlocking));
         if (!command.getClassName().isPresent()) {
             return;
         }
@@ -297,11 +304,22 @@ public class UsageFinder {
         return new ArrayList<>();
     }
 
-    private List<Selection> handleArgs(List<VariableDeclarator> variables, Set<LeftQualifier> localVars, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled) {
+    private List<Selection> handleArgs(List<VariableDeclarator> variables, Set<LeftQualifier> localVars, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVarsBlocking) {
         return variables.stream()
                 .map(VariableDeclarator::getInit)
-                .filter(init -> init != null && init instanceof LambdaExpr)
-                .flatMap(expr -> handleMaybeLambda(expr, fieldQualifiers, identifierOnlyEnabled, imported, localVars).stream())
+                .filter(Objects::nonNull)
+                .flatMap(init -> {
+                    if (init instanceof LambdaExpr) {
+                        return handleMaybeLambda(init, fieldQualifiers, identifierOnlyEnabled, imported, localVars).stream();
+                    } else if (init instanceof MethodCallExpr) {
+                        MethodCallExpr methodCallExpr = (MethodCallExpr) init;
+                        return handleMethodCallExpr(methodCallExpr, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking)
+                                .map(Stream::of)
+                                .orElse(Stream.empty());
+                    } else {
+                       return Stream.empty();
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
