@@ -108,8 +108,10 @@ public class CodeSample implements Comparable<CodeSample> {
                     int start = (selection.getStart().getLine() - 1) - 10;
                     int end = (selection.getEnd().getLine() - 1) + 10;
 
+                    int realStart = Math.min(Math.max(start, 0), split.length - 1);
+
                     StringBuilder builder = new StringBuilder();
-                    for (int i = start; i <= end; i++) {
+                    for (int i = realStart; i <= end && i < split.length; i++) {
                         builder.append(split[i]);
                         builder.append("\n");
                     }
