@@ -82,6 +82,12 @@ public class JavaParser implements Parser {
                 .findAny()
                 .isPresent();
 
+        if (cu.toString().contains("package com.donnfelker.android.bootstrap.core;\n" +
+                "\n" +
+                "import static android.graphics.Bitmap.CompressFormat.PNG;")) {
+            System.out.println("here");
+        }
+
         return cu.getTypes().stream()
                 .map(type -> new UsageFinder(cu, type, command, imported, staticImported, new ArrayList<>()))
                 .map(UsageFinder::checkTypeForUsages)

@@ -194,10 +194,15 @@ public class UsageFinder {
     }
 
     private Optional<Selection> handleMethodCallExpr(MethodCallExpr expression, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
-        MethodCallExpr methodCallExpr = expression;
+        for (Node node : expression.getChildrenNodes()) {
+            if (node instanceof MethodCallExpr) {
+                return handleMethodCallExpr((MethodCallExpr) node, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+            }
+        }
+
         boolean sameType = true;
         if (command.getClassName().isPresent()) {
-            Expression scope = methodCallExpr.getScope();
+            Expression scope = expression.getScope();
             if (scope != null && scope instanceof NameExpr) {
                 NameExpr nameExpr = (NameExpr) scope;
                 String name = nameExpr.getName();
@@ -235,7 +240,7 @@ public class UsageFinder {
         }
         boolean classnameActive = command.getClassName().isPresent();
         boolean methodActive = command.getMethodName().isPresent();
-        Boolean matches = command.getMethodName().map(method -> methodCallExpr.getName().equals(method))
+        Boolean matches = command.getMethodName().map(method -> expression.getName().equals(method))
                 .orElse(true);
         boolean validUsage = false;
         if (classnameActive && !methodActive) {
@@ -244,7 +249,7 @@ public class UsageFinder {
             validUsage = true;
         }
         if (validUsage) {
-            return Optional.of(getSelection(methodCallExpr));
+            return Optional.of(getSelection(expression));
         } else {
             return Optional.empty();
         }
@@ -430,7 +435,5 @@ public class UsageFinder {
         }
         return false;
     }
-
-
 }
 
