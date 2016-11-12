@@ -94,59 +94,8 @@ public class UsageFinder {
         List<Selection> usages = new ArrayList<>();
         for (Statement statement : stmt.getStmts()) {
             if (statement instanceof ExpressionStmt) {
-                Expression expression = ((ExpressionStmt) statement).getExpression();
-                if (expression instanceof VariableDeclarationExpr) {
-                    handleVariableDeclarationExpr(fieldQualifiers, identifierOnlyEnabled, localVars, localVarsBlocking, usages, inheritedLocalVars, (VariableDeclarationExpr) expression);
-                    continue;
-                } else if (expression instanceof AssignExpr) {
-                    if (!command.getClassName().isPresent()) {
-                        continue;
-                    }
-                    String classname = command.getClassName().get();
-                    AssignExpr declr = (AssignExpr) expression;
-                    Expression target = declr.getTarget();
-                    if (target instanceof NameExpr) {
-                        NameExpr nameExpr = (NameExpr) target;
-                        LeftQualifier leftQualifier = new LeftQualifier(false, nameExpr.getName());
-                        if (fieldQualifiers.contains(leftQualifier) || localVars.contains(leftQualifier)) {
-                            Expression value = declr.getValue();
-                            if (value instanceof ObjectCreationExpr) {
-                                ObjectCreationExpr creationExpr = (ObjectCreationExpr) value;
-                                ClassOrInterfaceType type = creationExpr.getType();
-                                boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
-                                if (!valid) {
-                                    if (fieldQualifiers.contains(leftQualifier)) {
-                                        fieldQualifiers.remove(leftQualifier);
-                                    } else if (localVars.contains(leftQualifier)) {
-                                        localVars.remove(leftQualifier);
-                                    }
-                                }
-                            }
-                        }
-                    } else if (target instanceof FieldAccessExpr) {
-                        FieldAccessExpr accessExpr = (FieldAccessExpr) target;
-                        Expression scope = accessExpr.getScope();
-                        if (scope instanceof ThisExpr) {
-                            ThisExpr thisExpr = (ThisExpr) scope;
-                            Expression value = declr.getValue();
-                            if (value instanceof ObjectCreationExpr) {
-                                LeftQualifier leftQualifier = new LeftQualifier(false, accessExpr.getField());
-                                ObjectCreationExpr creationExpr = (ObjectCreationExpr) value;
-                                ClassOrInterfaceType type = creationExpr.getType();
-                                boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
-                                if (!valid) {
-                                    if (fieldQualifiers.contains(leftQualifier)) {
-                                        fieldQualifiers.remove(leftQualifier);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if (expression instanceof MethodCallExpr) {
-                    Optional<Selection> optional = handleMethodCallExpr((MethodCallExpr) expression, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
-                    optional.ifPresent(usages::add);
-                    continue;
-                }
+                handleMethodExpressionStmt(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, usages, (ExpressionStmt) statement);
+                continue;
             } else if (statement instanceof ForeachStmt) {
                 ForeachStmt foreachStmt = (ForeachStmt) statement;
                 Statement body = foreachStmt.getBody();
@@ -176,18 +125,84 @@ public class UsageFinder {
                 BlockStmt finallyBlock = tryStmt.getFinallyBlock();
                 if (finallyBlock != null) {
                     usages.addAll(getUsagesForBlock(finallyBlock, fieldQualifiers, identifierOnlyEnabled, localVars, local, localVarsBlocking));
-
                 }
+            } else if (statement instanceof ReturnStmt) {
+                Expression expression = ((ReturnStmt) statement).getExpr();
+                handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, usages, expression);
+                continue;
             }
         }
         return usages;
     }
 
+    private void handleMethodExpressionStmt(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, ExpressionStmt statement) {
+        handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, usages, statement.getExpression());
+    }
+
+    private void handleMethodExpression(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, Expression expression) {
+        if (expression instanceof VariableDeclarationExpr) {
+            handleVariableDeclarationExpr(fieldQualifiers, identifierOnlyEnabled, localVars, localVarsBlocking, usages, inheritedLocalVars, (VariableDeclarationExpr) expression);
+            return;
+        } else if (expression instanceof AssignExpr) {
+            if (!command.getClassName().isPresent()) {
+                return;
+            }
+            String classname = command.getClassName().get();
+            AssignExpr declr = (AssignExpr) expression;
+            Expression target = declr.getTarget();
+            if (target instanceof NameExpr) {
+                NameExpr nameExpr = (NameExpr) target;
+                LeftQualifier leftQualifier = new LeftQualifier(false, nameExpr.getName());
+                if (fieldQualifiers.contains(leftQualifier) || localVars.contains(leftQualifier)) {
+                    Expression value = declr.getValue();
+                    if (value instanceof ObjectCreationExpr) {
+                        ObjectCreationExpr creationExpr = (ObjectCreationExpr) value;
+                        ClassOrInterfaceType type = creationExpr.getType();
+                        boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+                        if (!valid) {
+                            if (fieldQualifiers.contains(leftQualifier)) {
+                                fieldQualifiers.remove(leftQualifier);
+                            } else if (localVars.contains(leftQualifier)) {
+                                localVars.remove(leftQualifier);
+                            }
+                        }
+                    }
+                }
+            } else if (target instanceof FieldAccessExpr) {
+                FieldAccessExpr accessExpr = (FieldAccessExpr) target;
+                Expression scope = accessExpr.getScope();
+                if (scope instanceof ThisExpr) {
+                    Expression value = declr.getValue();
+                    if (value instanceof ObjectCreationExpr) {
+                        LeftQualifier leftQualifier = new LeftQualifier(false, accessExpr.getField());
+                        ObjectCreationExpr creationExpr = (ObjectCreationExpr) value;
+                        ClassOrInterfaceType type = creationExpr.getType();
+                        boolean valid = checkType(type, classname, command.getPackageName().orElse(null), imported);
+                        if (!valid) {
+                            if (fieldQualifiers.contains(leftQualifier)) {
+                                fieldQualifiers.remove(leftQualifier);
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (expression instanceof MethodCallExpr) {
+            Optional<Selection> optional = handleMethodCallExpr((MethodCallExpr) expression, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+            optional.ifPresent(usages::add);
+            return;
+        }
+    }
+
     private Optional<Selection> handleMethodCallExpr(MethodCallExpr expression, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
-        MethodCallExpr methodCallExpr = expression;
+        for (Node node : expression.getChildrenNodes()) {
+            if (node instanceof MethodCallExpr) {
+                return handleMethodCallExpr((MethodCallExpr) node, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
+            }
+        }
+
         boolean sameType = true;
         if (command.getClassName().isPresent()) {
-            Expression scope = methodCallExpr.getScope();
+            Expression scope = expression.getScope();
             if (scope != null && scope instanceof NameExpr) {
                 NameExpr nameExpr = (NameExpr) scope;
                 String name = nameExpr.getName();
@@ -225,7 +240,7 @@ public class UsageFinder {
         }
         boolean classnameActive = command.getClassName().isPresent();
         boolean methodActive = command.getMethodName().isPresent();
-        Boolean matches = command.getMethodName().map(method -> methodCallExpr.getName().equals(method))
+        Boolean matches = command.getMethodName().map(method -> expression.getName().equals(method))
                 .orElse(true);
         boolean validUsage = false;
         if (classnameActive && !methodActive) {
@@ -234,7 +249,7 @@ public class UsageFinder {
             validUsage = true;
         }
         if (validUsage) {
-            return Optional.of(getSelection(methodCallExpr));
+            return Optional.of(getSelection(expression));
         } else {
             return Optional.empty();
         }
@@ -420,7 +435,5 @@ public class UsageFinder {
         }
         return false;
     }
-
-
 }
 
