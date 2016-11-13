@@ -94,8 +94,7 @@ public class UsageFinder {
         List<Selection> usages = new ArrayList<>();
         for (Statement statement : stmt.getStmts()) {
             if (statement instanceof ExpressionStmt) {
-                handleMethodExpressionStmt(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, usages, (ExpressionStmt) statement);
-                continue;
+                return handleMethodExpressionStmt(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, (ExpressionStmt) statement);
             } else if (statement instanceof ForeachStmt) {
                 ForeachStmt foreachStmt = (ForeachStmt) statement;
                 Statement body = foreachStmt.getBody();
@@ -128,24 +127,24 @@ public class UsageFinder {
                 }
             } else if (statement instanceof ReturnStmt) {
                 Expression expression = ((ReturnStmt) statement).getExpr();
-                handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, usages, expression);
-                continue;
+                return handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, expression);
             }
         }
         return usages;
     }
 
-    private void handleMethodExpressionStmt(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, ExpressionStmt statement) {
-        handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, usages, statement.getExpression());
+    private List<Selection> handleMethodExpressionStmt(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, ExpressionStmt statement) {
+        return handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, statement.getExpression());
     }
 
-    private void handleMethodExpression(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, List<Selection> usages, Expression expression) {
+    private List<Selection> handleMethodExpression(Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking, Expression expression) {
+        List<Selection> usages = new ArrayList<>();
         if (expression instanceof VariableDeclarationExpr) {
             handleVariableDeclarationExpr(fieldQualifiers, identifierOnlyEnabled, localVars, localVarsBlocking, usages, inheritedLocalVars, (VariableDeclarationExpr) expression);
-            return;
+            return usages;
         } else if (expression instanceof AssignExpr) {
             if (!command.getClassName().isPresent()) {
-                return;
+                return usages;
             }
             String classname = command.getClassName().get();
             AssignExpr declr = (AssignExpr) expression;
@@ -189,8 +188,9 @@ public class UsageFinder {
         } else if (expression instanceof MethodCallExpr) {
             Optional<Selection> optional = handleMethodCallExpr((MethodCallExpr) expression, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking);
             optional.ifPresent(usages::add);
-            return;
         }
+
+        return usages;
     }
 
     private Optional<Selection> handleMethodCallExpr(MethodCallExpr expression, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVars, Set<LeftQualifier> localVarsBlocking) {
