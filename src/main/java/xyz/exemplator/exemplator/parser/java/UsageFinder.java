@@ -94,7 +94,7 @@ public class UsageFinder {
         List<Selection> usages = new ArrayList<>();
         for (Statement statement : stmt.getStmts()) {
             if (statement instanceof ExpressionStmt) {
-                return handleMethodExpressionStmt(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, (ExpressionStmt) statement);
+                usages.addAll(handleMethodExpressionStmt(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, (ExpressionStmt) statement));
             } else if (statement instanceof ForeachStmt) {
                 ForeachStmt foreachStmt = (ForeachStmt) statement;
                 Statement body = foreachStmt.getBody();
@@ -127,7 +127,7 @@ public class UsageFinder {
                 }
             } else if (statement instanceof ReturnStmt) {
                 Expression expression = ((ReturnStmt) statement).getExpr();
-                return handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, expression);
+                usages.addAll(handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, expression));
             }
         }
         return usages;
