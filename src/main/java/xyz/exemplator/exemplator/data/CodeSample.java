@@ -129,6 +129,22 @@ public class CodeSample implements Comparable<CodeSample> {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        CodeSample that = (CodeSample) o;
+
+        return rawUrl != null ? rawUrl.equals(that.rawUrl) : that.rawUrl == null;
+
+    }
+
+    @Override
+    public int hashCode() {
+        return rawUrl != null ? rawUrl.hashCode() : 0;
+    }
+
+    @Override
     public int compareTo(CodeSample o) {
         return o.getStars() - stars;
     }
