@@ -30,14 +30,14 @@ public class Response {
     }
 
     static class Occurrence {
-        private String rawUrl;
-        private String userUrl;
+        private String fileUrl;
+        private String repoUrl;
         private String code;
         private List<Selection> selections;
 
-        public Occurrence(String rawUrl, String userUrl, String code, List<Selection> selections) {
-            this.rawUrl = rawUrl;
-            this.userUrl = userUrl;
+        public Occurrence(String fileUrl, String repoUrl, String code, List<Selection> selections) {
+            this.fileUrl = fileUrl;
+            this.repoUrl = repoUrl;
             this.code = code;
             this.selections = selections;
         }
@@ -50,12 +50,12 @@ public class Response {
             return code;
         }
 
-        public String getRawUrl() {
-            return rawUrl;
+        public String getFileUrl() {
+            return fileUrl;
         }
 
-        public String getUserUrl() {
-            return userUrl;
+        public String getRepoUrl() {
+            return repoUrl;
         }
     }
 

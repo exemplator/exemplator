@@ -18,8 +18,10 @@ import java.util.stream.Collectors;
 
 public class CodeSearch implements ICodeSearch {
     private static String SEARCHCODE_API_URL = "https://searchcode.com/api/codesearch_I/?q=";
-    private static String RAW_CODE_URL = "https://searchcode.com/api/result/";
+    private static String LANG_JAVA = "java";
     private static String GITHUB_REPO_URL = "https://api.github.com/search/repositories?q=";
+    private static String GITHUB_RAW_URL = "https://raw.githubusercontent.com/";
+    private static String GITHUB_URL = "https://github.com/";
 
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -47,8 +49,9 @@ public class CodeSearch implements ICodeSearch {
 
         return codeSamples.stream().map(codeSample -> {
             CompletableFuture<Optional<CodeSample>> futureCode = CompletableFuture.supplyAsync(() -> fetchRawCode(codeSample), executorService);
-            CompletableFuture<Optional<CodeSample>> futureGit = CompletableFuture.supplyAsync(() -> fetchGithubRating(codeSample), executorService);
-            return CompletableFuture.allOf(futureCode, futureGit).thenApply(v -> futureCode.join().flatMap(ignore -> futureGit.join()));
+            //CompletableFuture<Optional<CodeSample>> futureGit = CompletableFuture.supplyAsync(() -> fetchGithubRating(codeSample), executorService);
+            //return CompletableFuture.allOf(futureCode, futureGit).thenApply(v -> futureCode.join().flatMap(ignore -> futureGit.join()));
+            return CompletableFuture.allOf(futureCode).thenApply(v -> futureCode.join());
         }).collect(Collectors.toList());
     }
 
@@ -115,12 +118,10 @@ public class CodeSearch implements ICodeSearch {
             Object jsonObj = parser.parse(jsonString);
             JSONObject jsonObject = (JSONObject) jsonObj;
 
-            JavaCodeRater javaCodeRater = new JavaCodeRater();
-
             Map<JSONObject, CodeSample> codeSampleMap = new HashMap<>();
             JSONArray codeSamples = (JSONArray) jsonObject.get("results");
             codeSamples.stream().forEach(codeSample ->
-                    codeSampleMap.put((JSONObject) codeSample, javaCodeRater.rateJavaCodeSample((JSONObject) codeSample)));
+                    codeSampleMap.put((JSONObject) codeSample, initCodeSample((JSONObject) codeSample)));
 
             return codeSampleMap;
         } catch (ParseException e) {
@@ -128,6 +129,44 @@ public class CodeSearch implements ICodeSearch {
         }
 
         return null;
+    }
+
+    private CodeSample initCodeSample(JSONObject codeSample)  {
+        String language = (String) codeSample.get("language");
+
+        // Make sure type is set to java
+        if (language == null || !language.toLowerCase().equals(LANG_JAVA)) {
+            return null;
+        }
+
+        String filename = (String) codeSample.get("filename");
+
+        // Make sure filename ends in .java
+        if (filename != null) {
+            String[] nameParts = filename.split("\\.");
+            if (!nameParts[nameParts.length - 1].toLowerCase().equals(LANG_JAVA)) {
+                return null;
+            }
+        } else {
+            return null;
+        }
+
+        String gitRepo = (String) codeSample.get("repo");
+        String location = (String) codeSample.get("location");
+        String[] gitData = gitRepo.substring(0, gitRepo.length() - 4).split("/");
+
+        String user = gitData[3];
+        String repo = gitData[4];
+
+        String rawURL = GITHUB_RAW_URL + user + "/" + repo + "/master" + location + "/" + filename;
+        String fileURL = GITHUB_URL + user + "/" + repo + "/blob/master" + location + "/" + filename;
+
+        CodeSample codeSampleObj = new CodeSample(user, repo);
+
+        codeSampleObj.setUserUrl(gitRepo);
+        codeSampleObj.setRawUrl(rawURL);
+        codeSampleObj.setFileUrl(fileURL);
+        return codeSampleObj;
     }
 
     /**
