@@ -81,6 +81,7 @@ public class Router {
                                                 .map(Jackson::json);
                                     }));
                         })
+                        .get("version", ctx -> ctx.render(getClass().getPackage().getImplementationVersion()))
                 )
         );
     }
