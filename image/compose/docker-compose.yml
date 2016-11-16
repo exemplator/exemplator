@@ -1,0 +1,24 @@
+version: '2'
+services:
+  proxy:
+    image: exemplator/nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/certs:ro
+    depends_on:
+      - page
+      - server
+    links:
+      - page:page
+      - server:api
+  page:
+    image: exemplator/exemplator-page
+    restart: always
+    environment:
+      - SERVER_URL=${SERVER}
+  server:
+    image: exemplator/exemplator
+    restart: always
