@@ -1,5 +1,5 @@
 group 'xyz.exemplator'
-version '1.1'
+version '1.1.1'
 
 task wrapper(type: Wrapper) {
   gradleVersion = '2.9'

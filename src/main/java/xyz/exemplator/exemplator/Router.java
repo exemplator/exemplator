@@ -92,7 +92,7 @@ public class Router {
         return doCodeSearch(searchTerms, requestPage, executorService, command, request, selectionHashes)
                 .thenCompose((List<CodeSample> results) -> {
                     int newAccumulator = accumulator + results.size();
-                    if (newAccumulator < 10 && recursion <= 10) {
+                    if (newAccumulator < 10 && recursion <= 5) {
                         try {
                             return handleSearchRequest(searchTerms, requestPage + 1, executorService, command, request, newAccumulator, selectionHashes, recursion + 1)
                                     .<ResultAndPage>thenApply(resultAndPage -> {
