@@ -8,6 +8,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 public interface ICodeSearch {
-    List<CompletableFuture<Optional<CodeSample>>> fetch(List<String> searchTerms, int page,
+    CompletableFuture<List<Optional<CodeSample>>> fetch(List<String> searchTerms, int page,
                                                         ExecutorService executorService) throws HttpException;
 }

@@ -117,13 +117,11 @@ public class Router {
 
     public CompletableFuture<List<CodeSample>> doCodeSearch(List<String> searchTerms, int requestPage, ExecutorService executorService,
                                                             Command command, Request request, Set<Integer> selectionHashes) throws HttpException {
-        List<CompletableFuture<Optional<CodeSample>>> search = codeSearch.fetch(searchTerms, requestPage, executorService);
-        CompletableFuture[] completableFutures = (CompletableFuture[]) search.stream()
-                .toArray(size -> new CompletableFuture[size]);
+        CompletableFuture<List<Optional<CodeSample>>> fetch = codeSearch.fetch(searchTerms, requestPage, executorService);
 
-        return CompletableFuture.allOf((CompletableFuture<?>[]) completableFutures).thenApply(v ->
-                search.stream()
-                        .map(CompletableFuture::join)
+
+        return fetch.thenApply(v ->
+                v.stream()
                         .map(opt -> opt.flatMap(sample -> parseOrReturn(sample, command, request)))
                         .filter(Optional::isPresent)
                         .map(Optional::get)

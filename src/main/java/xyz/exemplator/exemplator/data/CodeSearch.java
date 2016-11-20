@@ -26,7 +26,7 @@ public class CodeSearch implements ICodeSearch {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Override
-    public List<CompletableFuture<Optional<CodeSample>>> fetch(List<String> searchTerms, int page,
+    public CompletableFuture<List<Optional<CodeSample>>> fetch(List<String> searchTerms, int page,
                                                                ExecutorService executorService) throws HttpException {
         HTTPRequest httpRequest = new HTTPRequest();
         String url = createQuery(searchTerms, page, 2, 23);
@@ -34,82 +34,90 @@ public class CodeSearch implements ICodeSearch {
             throw new HttpException("Url is null");
         }
 
-        String response = httpRequest.getRequest(url);
-        Map<JSONObject, CodeSample> codeSamplesJson;
-        if (response != null) {
-            codeSamplesJson = parseJson(response);
-        } else {
-            throw new HttpException("Unable to query url: " + url);
-        }
+        return httpRequest.getRequest(url, executorService)
+                .thenCompose(response -> {
+                    Map<JSONObject, CodeSample> codeSamplesJson;
+                    if (response != null) {
+                        codeSamplesJson = parseJson(response);
+                    } else {
+                        throw new RuntimeException(new HttpException("Unable to query url: " + url));
+                    }
 
-        // Get raw code from github
-        Set<CodeSample> codeSamples = new HashSet<>();
-        codeSamplesJson.entrySet().stream()
-                .forEach(entry -> codeSamples.add(entry.getValue()));
+                    // Get raw code from github
+                    Set<CodeSample> codeSamples = new HashSet<>();
+                    codeSamplesJson.entrySet().forEach(entry -> codeSamples.add(entry.getValue()));
 
-        return codeSamples.stream().map(codeSample -> {
-            CompletableFuture<Optional<CodeSample>> futureCode = CompletableFuture.supplyAsync(() -> fetchRawCode(codeSample), executorService);
-            //CompletableFuture<Optional<CodeSample>> futureGit = CompletableFuture.supplyAsync(() -> fetchGithubRating(codeSample), executorService);
-            //return CompletableFuture.allOf(futureCode, futureGit).thenApply(v -> futureCode.join().flatMap(ignore -> futureGit.join()));
-            return CompletableFuture.allOf(futureCode).thenApply(v -> futureCode.join());
-        }).collect(Collectors.toList());
+                    CompletableFuture<Optional<CodeSample>>[] collect = codeSamples.stream().map(codeSample -> fetchRawCode(codeSample, executorService))
+                            .<CompletableFuture<Optional<CodeSample>>>toArray(CompletableFuture[]::new);
+                    return CompletableFuture.allOf((CompletableFuture<?>[]) collect)
+                            .thenApply(Foid -> Arrays.stream(collect)
+                                    .map(CompletableFuture::join)
+                                    .collect(Collectors.toList()));
+                });
+
     }
 
-    private Optional<CodeSample> fetchRawCode(CodeSample codeSample) {
+    private CompletableFuture<Optional<CodeSample>> fetchRawCode(CodeSample codeSample, ExecutorService executorService) {
         if (codeSample.getRawUrl() != null) {
             HTTPRequest httpRequest = new HTTPRequest();
-            String rawResponse = httpRequest.getRequest(codeSample.getUrl());
-            if (rawResponse != null) {
-                rawResponse = rawResponse.replace("    ", "  ");
-                rawResponse = rawResponse.trim();
-                codeSample.setCode(rawResponse);
-                InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
-                codeSample.setCodeInputStream(stream);
-                return Optional.of(codeSample);
-            }
+            return httpRequest.getRequest(codeSample.getUrl(), executorService)
+                    .thenApplyAsync(rawResponse -> {
+                        if (rawResponse != null) {
+                            rawResponse = rawResponse.replace("    ", "  ");
+                            rawResponse = rawResponse.trim();
+                            codeSample.setCode(rawResponse);
+                            InputStream stream = new ByteArrayInputStream(rawResponse.getBytes(StandardCharsets.UTF_8));
+                            codeSample.setCodeInputStream(stream);
+                            return Optional.of(codeSample);
+                        } else {
+                            return Optional.empty();
+                        }
+                    }, executorService);
         }
 
-        return Optional.empty();
+        return CompletableFuture.completedFuture(Optional.empty());
     }
 
-    private Optional<CodeSample> fetchGithubRating(CodeSample codeSample) {
+    private CompletableFuture<Optional<CodeSample>> fetchGithubRating(CodeSample codeSample, ExecutorService executorService) {
         HTTPRequest httpRequest = new HTTPRequest();
-        String response = httpRequest.getRequest(GITHUB_REPO_URL + codeSample.getRepository() + "+user:" + codeSample.getUserName());
-        JSONParser parser = new JSONParser();
+        return httpRequest.getRequest(GITHUB_REPO_URL + codeSample.getRepository() + "+user:" + codeSample.getUserName(), executorService)
+                .thenApply(response -> {
+                    JSONParser parser = new JSONParser();
 
-        if (response == null) {
-            // Not supported by github
-            codeSample.setStars(-1);
-            return Optional.of(codeSample);
-        }
+                    if (response == null) {
+                        // Not supported by github
+                        codeSample.setStars(-1);
+                        return Optional.of(codeSample);
+                    }
 
-        try {
-            Object jsonObj = parser.parse(response);
-            JSONObject jsonObject = (JSONObject) jsonObj;
-            JSONArray items = (JSONArray) jsonObject.get("items");
-            Optional<Integer> starCountOptional = items.stream()
-                    .filter(item -> {
-                        JSONObject obj = (JSONObject) item;
-                        String name = (String) obj.get("name");
-                        return name.toLowerCase().equals(codeSample.getRepository().toLowerCase());
-                    })
-                    .findFirst()
-                    .map(item -> {
-                        JSONObject obj = (JSONObject) item;
-                        return (int) (long) obj.get("stargazers_count");
-                    });
+                    try {
+                        Object jsonObj = parser.parse(response);
+                        JSONObject jsonObject = (JSONObject) jsonObj;
+                        JSONArray items = (JSONArray) jsonObject.get("items");
+                        Optional<Integer> starCountOptional = items.stream()
+                                .filter(item -> {
+                                    JSONObject obj = (JSONObject) item;
+                                    String name = (String) obj.get("name");
+                                    return name.toLowerCase().equals(codeSample.getRepository().toLowerCase());
+                                })
+                                .findFirst()
+                                .map(item -> {
+                                    JSONObject obj = (JSONObject) item;
+                                    return (int) (long) obj.get("stargazers_count");
+                                });
 
-            if (starCountOptional.isPresent()) {
-                codeSample.setStars(starCountOptional.get());
-                return Optional.of(codeSample);
-            }
-        } catch (ParseException e) {
-            logger.error("Unable to parse json", e);
-        }
+                        if (starCountOptional.isPresent()) {
+                            codeSample.setStars(starCountOptional.get());
+                            return Optional.of(codeSample);
+                        }
+                    } catch (ParseException e) {
+                        logger.error("Unable to parse json", e);
+                    }
 
-        // Not supported by github
-        codeSample.setStars(-1);
-        return Optional.of(codeSample);
+                    // Not supported by github
+                    codeSample.setStars(-1);
+                    return Optional.of(codeSample);
+                });
     }
 
     private Map<JSONObject, CodeSample> parseJson(String jsonString) {
