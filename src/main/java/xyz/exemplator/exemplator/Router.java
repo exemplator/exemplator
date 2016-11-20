@@ -66,6 +66,9 @@ public class Router {
                                                 && !request.getClassName().isPresent() && !request.getMethodName().isPresent()) {
                                             throw new IllegalArgumentException("token, methodName or classname must be present");
                                         }
+                                        if (request.getMethodName().map(name -> name.equals("new") && !request.getClassName().isPresent()).orElse(false)) {
+                                            throw new IllegalArgumentException("searching for constructor must specify the class");
+                                        }
                                         List<String> searchTerms = Stream.of(request.getClassName(), request.getMethodName(), request.getPackageName(), request.getToken())
                                                 .filter(Optional::isPresent)
                                                 .map(Optional::get)
@@ -140,7 +143,7 @@ public class Router {
             sample.getSelections().add(new Selection(new Position(-1, -1), new Position(-1, -1)));
             return Optional.of(sample);
         } else {
-            return Parsers.from("JAVA", sample.getCodeInputStream())
+            return Parsers.from("JAVA", sample)
                     .map(parser -> parser.getMatches(command))
                     .map(matches -> {
                         sample.setSelections(matches);

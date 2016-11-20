@@ -1,23 +1,22 @@
 package xyz.exemplator.exemplator.parser.java;
 
-import com.github.javaparser.ParseException;
-import com.github.javaparser.TokenMgrError;
+import com.github.javaparser.*;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.ImportDeclaration;
-import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.expr.QualifiedNameExpr;
+import com.github.javaparser.ast.comments.CommentsParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import xyz.exemplator.exemplator.data.CodeSample;
 import xyz.exemplator.exemplator.parser.Parser;
 import xyz.exemplator.exemplator.parser.Selection;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -27,28 +26,59 @@ import java.util.stream.Collectors;
 public class JavaParser implements Parser {
     private static final Logger logger = LoggerFactory.getLogger(JavaParser.class);
     private final CompilationUnit cu;
+    private final CodeSample sample;
 
-    public JavaParser(CompilationUnit cu) {
+    public JavaParser(CompilationUnit cu, CodeSample sample) {
         this.cu = cu;
+        this.sample = sample;
     }
 
-    public static Optional<Parser> of(InputStream inputStream) {
+    public static Optional<Parser> of(CodeSample sample) {
         CompilationUnit cu;
         try {
             // parse the file
-            cu = com.github.javaparser.JavaParser.parse(inputStream);
-        } catch (ParseException | TokenMgrError e) {
+            cu = parse(sample);
+        } catch (IllegalStateException | TokenMgrError e) {
             logger.error("Unable to parse input", e);
             return Optional.empty();
-        } finally {
-            try {
-                inputStream.close();
-            } catch (IOException e) {
-                logger.error("Unable to close input", e);
+        }
+        return Optional.of(new JavaParser(cu, sample));
+    }
+
+    private static CompilationUnit parse(CodeSample sample) throws IllegalStateException {
+        try (InputStream codeInputStream = sample.getCodeInputStream()) {
+            CompilationUnit cu = callAst(codeInputStream);
+            insertComments(cu, sample.getCode());
+            return cu;
+        } catch (Exception ioe){
+            if (ioe instanceof InvocationTargetException) {
+                throw new IllegalStateException(ioe.getCause());
+            } else {
+                throw new IllegalStateException(ioe.getCause());
             }
         }
-        return Optional.of(new JavaParser(cu));
     }
+
+    //evil vodoo because we are allocating a lot of memory for the code
+    private static CompilationUnit callAst(InputStream inputStream) throws Exception {
+        String className = "com.github.javaparser.ASTParser";
+        Class c = Class.forName(className);
+        Constructor constructor = c.getConstructor(InputStream.class);
+        constructor.setAccessible(true);
+        Object newInstance = constructor.newInstance(inputStream);
+        Method compilationUnit = newInstance.getClass().getMethod("CompilationUnit");
+        compilationUnit.setAccessible(true);
+        return (CompilationUnit) compilationUnit.invoke(newInstance);
+    }
+
+    private static void insertComments(CompilationUnit cu, String code) throws Exception {
+        String className = "com.github.javaparser.JavaParser";
+        Class c = Class.forName(className);
+        Method insertComments = c.getDeclaredMethod("insertComments", CompilationUnit.class, String.class);
+        insertComments.setAccessible(true);
+        insertComments.invoke(null, cu, code);
+    }
+
 
     @Override
     public List<Selection> getMatches(Command command) {
@@ -70,6 +100,35 @@ public class JavaParser implements Parser {
             }
         };
 
+
+        List<Integer> occurences = command.getMethodName().map(name -> {
+            if (!Objects.equals(name, "new")) {
+                Pattern pattern = Pattern.compile("\\.\\s*(<.*>)?\\s*" + name + "\\s*\\(");
+                String lines[] = sample.getCode().split("\\r?\\n");
+                List<Integer> occurencesTemp = new ArrayList<>();
+                for (int i = 0; i < lines.length; i++) {
+                    String line = lines[i];
+                    if (pattern.matcher(line).find()) {
+                        occurencesTemp.add(i + 1);
+                    }
+                }
+                return occurencesTemp;
+            } else {
+                return command.getClassName().map(className -> {
+                    Pattern pattern = Pattern.compile("new\\s+" + name);
+                    String lines[] = sample.getCode().split("\\r?\\n");
+                    List<Integer> occurencesTemp = new ArrayList<>();
+                    for (int i = 0; i < lines.length; i++) {
+                        String line = lines[i];
+                        if (pattern.matcher(line).find()) {
+                            occurencesTemp.add(i + 1);
+                        }
+                    }
+                    return occurencesTemp;
+                }).orElseGet(ArrayList::new);
+            }
+        }).orElseGet(ArrayList::new);
+
         boolean imported = cu.getImports().stream()
                 .filter(importDeclaration -> !importDeclaration.isStatic())
                 .filter(isMentioned)
@@ -82,8 +141,10 @@ public class JavaParser implements Parser {
                 .findAny()
                 .isPresent();
 
+
+
         return cu.getTypes().stream()
-                .map(type -> new UsageFinder(cu, type, command, imported, staticImported, new ArrayList<>()))
+                .map(type -> new UsageFinder(cu, type, command, imported, staticImported, occurences,new ArrayList<>()))
                 .map(UsageFinder::checkTypeForUsages)
                 .flatMap(List::stream)
                 .collect(Collectors.toList());

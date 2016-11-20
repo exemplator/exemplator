@@ -21,6 +21,7 @@ import java.util.stream.StreamSupport;
  * @author LeanderK
  * @version 1.0
  */
+//TODO check handleArguments -> duplicate + missing
 public class UsageFinder {
     private final CompilationUnit cu;
     private final TypeDeclaration type;
@@ -28,14 +29,16 @@ public class UsageFinder {
     private final boolean imported;
     private final boolean identifierOnly;
     private final List<QualifiedNameExpr> outerQualifiedNameExprs;
+    private final List<Integer> occurences;
 
-    public UsageFinder(CompilationUnit cu, TypeDeclaration type, Command command, boolean imported, boolean identifierOnly, List<QualifiedNameExpr> outerQualifiedNameExprs) {
+    public UsageFinder(CompilationUnit cu, TypeDeclaration type, Command command, boolean imported, boolean identifierOnly, List<Integer> occurences, List<QualifiedNameExpr> outerQualifiedNameExprs) {
         this.cu = cu;
         this.type = type;
         this.command = command;
         this.outerQualifiedNameExprs = outerQualifiedNameExprs;
         this.imported = imported;
         this.identifierOnly = identifierOnly;
+        this.occurences = occurences;
     }
 
     List<Selection> checkTypeForUsages() {
@@ -59,6 +62,16 @@ public class UsageFinder {
         List<Selection> selections = type.getChildrenNodes().stream()
                 .filter(node -> node instanceof MethodDeclaration)
                 .map(node -> (MethodDeclaration) node)
+                .filter(method -> {
+                    if (occurences.isEmpty()) {
+                        return true;
+                    } else {
+                        return occurences.stream()
+                                .filter(occurence -> method.getBeginLine() <= occurence && method.getEndLine() >= occurence)
+                                .findAny()
+                                .isPresent();
+                    }
+                })
                 .flatMap(node -> {
                     List<Parameter> parameters = node.getParameters();
                     HashSet<LeftQualifier> methodSet = new HashSet<>();
@@ -127,6 +140,9 @@ public class UsageFinder {
                 }
             } else if (statement instanceof ReturnStmt) {
                 Expression expression = ((ReturnStmt) statement).getExpr();
+                usages.addAll(handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, expression));
+            } else if (statement instanceof ThrowStmt) {
+                Expression expression = ((ThrowStmt) statement).getExpr();
                 usages.addAll(handleMethodExpression(fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking, expression));
             }
         }
@@ -331,11 +347,30 @@ public class UsageFinder {
                         return handleMethodCallExpr(methodCallExpr, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVars, localVarsBlocking)
                                 .map(Stream::of)
                                 .orElse(Stream.empty());
+                    } else if (init instanceof ObjectCreationExpr) {
+                        ObjectCreationExpr creationExpr = (ObjectCreationExpr) init;
+                        return handleObjectCreation(creationExpr, localVars, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVarsBlocking).stream();
                     } else {
                        return Stream.empty();
                     }
                 })
                 .collect(Collectors.toList());
+    }
+
+    private List<Selection> handleObjectCreation(ObjectCreationExpr creationExpr,  Set<LeftQualifier> localVars, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled, Set<LeftQualifier> inheritedLocalVars, Set<LeftQualifier> localVarsBlocking) {
+        //List<Selection> selections = handleArgs(creationExpr.getArgs(), localVars, fieldQualifiers, identifierOnlyEnabled, inheritedLocalVars, localVarsBlocking);
+        List<Selection> selections = new ArrayList<>();
+        ClassOrInterfaceType type = creationExpr.getType();
+        if (command.getClassName().isPresent()) {
+            String classname = command.getClassName().get();
+            boolean checkType = checkType(type, classname, command.getPackageName().orElse(null), imported);
+            if (checkType) {
+                if (!(command.getMethodName().isPresent() && !Objects.equals(command.getMethodName().get(), "new"))) {
+                    selections.add(getSelection(creationExpr));
+                }
+            }
+        }
+        return selections;
     }
 
     private List<Selection> handleMaybeLambda(Expression expression, Set<LeftQualifier> fieldQualifiers, boolean identifierOnlyEnabled,

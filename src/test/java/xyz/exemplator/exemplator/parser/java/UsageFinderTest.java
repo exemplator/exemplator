@@ -7,10 +7,7 @@ import xyz.exemplator.exemplator.parser.Selection;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.Assert.*;
 
 /**
  * @author LeanderK
@@ -23,7 +20,7 @@ public class UsageFinderTest {
         CompilationUnit cu = com.github.javaparser.JavaParser.parse(resourceAsStream);
         TypeDeclaration typeDeclaration = cu.getTypes().get(0);
         Command command = new Command("InputStream", "java.io", "read");
-        JavaParser javaParser = new JavaParser(cu);
+        JavaParser javaParser = new JavaParser(cu, sample);
         List<Selection> matches = javaParser.getMatches(command);
         System.out.println(matches);
     }
