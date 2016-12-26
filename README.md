@@ -1,6 +1,6 @@
 # Exemplator
 
-This repository holds the Exemplator server. The website can be found [here](http://exemplator.xyz).
+This repository has the exemplator server. Check the out the [website](https://exemplator.xyz).
 
 ### What is Exemplator?
 Exemplator is a search engine for Java code snippets. It takes a function/code as input and searches GitHub for code snippets that use that function/code.
